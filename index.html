@@ -47,32 +47,47 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    const map = L.map('map').setView([35.5540, 139.5360], 13);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
+const map = L.map('map').setView([35.5457,139.5331],13)
 
-    const busData = {
-      busId: 'BUS01',
-      routeName: '鴨志田',
-      status: '運行中',
-      lat: 35.5540,
-      lng: 139.5360,
-      updatedAt: new Date().toLocaleString('ja-JP')
-    };
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+ attribution:'© OpenStreetMap'
+}).addTo(map)
 
-    const marker = L.marker([busData.lat, busData.lng]).addTo(map);
+let markers = {}
 
-    marker.bindPopup(
-      `<b>${busData.busId}</b><br>` +
-      `路線: ${busData.routeName}<br>` +
-      `状態: ${busData.status}<br>` +
-      `更新: ${busData.updatedAt}`
-    );
+async function loadBus(){
 
-    document.getElementById('status').textContent =
-      `${busData.busId} / ${busData.routeName} / ${busData.status} / 更新: ${busData.updatedAt}`;
-  </script>
-</body>
+ const res = await fetch("あなたのGAS_DEV_URL?action=getLocations") const buses = await res.json()
+
+ buses.forEach(bus=>{
+
+   const lat = Number(bus.lat)
+   const lng = Number(bus.lng)
+
+   if(!lat || !lng) return
+
+   const id = bus.bus_id
+
+   if(!markers[id]){
+
+      markers[id] = L.marker([lat,lng])
+        .addTo(map)
+        .bindPopup(id)
+
+   }else{
+
+      markers[id].setLatLng([lat,lng])
+
+   }
+
+ })
+
+}
+
+loadBus()
+
+setInterval(loadBus,10000)
+
+</script></body>
 </html>
