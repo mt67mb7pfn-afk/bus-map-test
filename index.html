@@ -48,65 +48,80 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxzzWoKWCjjK6GFpaJvgmIOOEmBBQOGcOBvcjhDlL0LHKVjBBcyt6KDFIrHKquetnJ7/exec?action=getLocations";
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbxzzWoKWCjjK6GFpaJvgmIOOEmBBQOGcOBvcjhDlL0LHKVjBBcyt6KDFIrHKquetnJ7/exec?action=getLocations";
 
-    const map = L.map("map").setView([35.5457, 139.5331], 13);
+  const map = L.map("map").setView([35.5457, 139.5331], 13);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap contributors"
-    }).addTo(map);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "&copy; OpenStreetMap contributors"
+  }).addTo(map);
 
-    const markers = {};
+  const markers = {};
 
-    async function loadBus() {
-      try {
-        const res = await fetch(GAS_URL);
-        const buses = await res.json();
+  function createBusIcon() {
+    return L.divIcon({
+      className: "bus-icon",
+      html: "<div>🚌</div>",
+      iconSize: [70, 70],
+      iconAnchor: [35, 35]
+    });
+  }
 
-        if (!Array.isArray(buses) || buses.length === 0) {
-          document.getElementById("status").textContent = "バスデータがありません";
+  async function loadBus() {
+    try {
+      const res = await fetch(GAS_URL);
+      const buses = await res.json();
+
+      if (!Array.isArray(buses) || buses.length === 0) {
+        document.getElementById("status").textContent = "バスデータがありません";
+        return;
+      }
+
+      let visibleCount = 0;
+
+      buses.forEach((bus) => {
+        const lat = Number(bus.lat);
+        const lng = Number(bus.lng);
+
+        if (Number.isNaN(lat) || Number.isNaN(lng) || lat === 0 || lng === 0) {
           return;
         }
 
-        let statusText = `運行台数：${buses.length}台`;
+        const id = bus.bus_id || "";
+        const routeName = bus.route_name || "";
+        const busStatus = bus.status || "";
+        const updatedAt = bus.updated_at || "";
+        const note = bus.note || "";
 
-        buses.forEach((bus) => {
-          const lat = Number(bus.lat);
-          const lng = Number(bus.lng);
+        visibleCount++;
 
-          if (Number.isNaN(lat) || Number.isNaN(lng) || lat === 0 || lng === 0) {
-            return;
-          }
+        const popupHtml =
+          `<b>${routeName}</b><br>` +
+          `バス: ${id}<br>` +
+          `状態: ${busStatus}<br>` +
+          `更新: ${updatedAt}` +
+          (note ? `<br>備考: ${note}` : "");
 
-          const id = bus.bus_id || "";
-          const routeName = bus.route_name || "";
-          const busStatus = bus.status || "";
-          const updatedAt = bus.updated_at || "";
+        if (!markers[id]) {
+          markers[id] = L.marker([lat, lng], { icon: createBusIcon() }).addTo(map);
+        } else {
+          markers[id].setLatLng([lat, lng]);
+          markers[id].setIcon(createBusIcon());
+        }
 
-          const popupHtml =
-            `<b>${id}</b><br>` +
-            `路線: ${routeName}<br>` +
-            `状態: ${busStatus}<br>` +
-            `更新: ${updatedAt}`;
+        markers[id].bindPopup(popupHtml);
+      });
 
-          if (!markers[id]) {
-            markers[id] = L.marker([lat, lng]).addTo(map);
-          } else {
-            markers[id].setLatLng([lat, lng]);
-          }
-
-          markers[id].bindPopup(popupHtml);
-        });
-
-        document.getElementById("status").textContent = statusText;
-      } catch (error) {
-        console.error(error);
-        document.getElementById("status").textContent = "読み込みに失敗しました";
-      }
+      document.getElementById("status").textContent =
+        `表示中：${visibleCount}台 / 最終更新: ${new Date().toLocaleTimeString("ja-JP")}`;
+    } catch (error) {
+      console.error(error);
+      document.getElementById("status").textContent = "読み込みに失敗しました";
     }
+  }
 
-    loadBus();
-    setInterval(loadBus, 10000);
+  loadBus();
+  setInterval(loadBus, 10000);
   </script>
 </body>
 </html>
