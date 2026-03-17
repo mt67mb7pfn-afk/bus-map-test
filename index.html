@@ -32,6 +32,7 @@
       background: #ffffff;
       border-bottom: 1px solid #ddd;
       font-size: 14px;
+      line-height: 1.5;
     }
 
     #map {
@@ -47,47 +48,65 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
+    const GAS_URL = "YOUR_GAS_URL?action=getLocations";
 
-const map = L.map('map').setView([35.5457,139.5331],13)
+    const map = L.map("map").setView([35.5457, 139.5331], 13);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
- attribution:'© OpenStreetMap'
-}).addTo(map)
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(map);
 
-let markers = {}
+    const markers = {};
 
-async function loadBus(){
+    async function loadBus() {
+      try {
+        const res = await fetch(GAS_URL);
+        const buses = await res.json();
 
- const res = await fetch("あなたのGAS_DEV_URL?action=getLocations") const buses = await res.json()
+        if (!Array.isArray(buses) || buses.length === 0) {
+          document.getElementById("status").textContent = "バスデータがありません";
+          return;
+        }
 
- buses.forEach(bus=>{
+        let statusText = `運行台数：${buses.length}台`;
 
-   const lat = Number(bus.lat)
-   const lng = Number(bus.lng)
+        buses.forEach((bus) => {
+          const lat = Number(bus.lat);
+          const lng = Number(bus.lng);
 
-   if(!lat || !lng) return
+          if (Number.isNaN(lat) || Number.isNaN(lng) || lat === 0 || lng === 0) {
+            return;
+          }
 
-   const id = bus.bus_id
+          const id = bus.bus_id || "";
+          const routeName = bus.route_name || "";
+          const busStatus = bus.status || "";
+          const updatedAt = bus.updated_at || "";
 
-   if(!markers[id]){
+          const popupHtml =
+            `<b>${id}</b><br>` +
+            `路線: ${routeName}<br>` +
+            `状態: ${busStatus}<br>` +
+            `更新: ${updatedAt}`;
 
-      markers[id] = L.marker([lat,lng])
-        .addTo(map)
-        .bindPopup(id)
+          if (!markers[id]) {
+            markers[id] = L.marker([lat, lng]).addTo(map);
+          } else {
+            markers[id].setLatLng([lat, lng]);
+          }
 
-   }else{
+          markers[id].bindPopup(popupHtml);
+        });
 
-      markers[id].setLatLng([lat,lng])
+        document.getElementById("status").textContent = statusText;
+      } catch (error) {
+        console.error(error);
+        document.getElementById("status").textContent = "読み込みに失敗しました";
+      }
+    }
 
-   }
-
- })
-
-}
-
-loadBus()
-
-setInterval(loadBus,10000)
-
-</script></body>
+    loadBus();
+    setInterval(loadBus, 10000);
+  </script>
+</body>
 </html>
