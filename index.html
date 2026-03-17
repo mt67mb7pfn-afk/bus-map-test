@@ -812,8 +812,8 @@ const API_BASE = 'https://script.google.com/macros/s/AKfycbx3IdwRgyzBTt-_efBSiBN
       initMap();
       currentRouteName = document.getElementById('routeSelector').value;
 
-      await loadBusData();
-      await loadRouteLayers(currentRouteName);
+      loadBusData();
+      loadRouteLayers(currentRouteName);
       await loadNotices();
 
       document.getElementById('routeSelector').addEventListener('change', function() {
@@ -830,7 +830,7 @@ const API_BASE = 'https://script.google.com/macros/s/AKfycbx3IdwRgyzBTt-_efBSiBN
 
       setInterval(function() {
         loadBusData();
-      }, 20000);
+      }, 15000);
     });
   </script>
 </body>
