@@ -11,7 +11,25 @@
   />
 
   <style>
-    .bus-icon {
+  .route-bar {
+  padding: 10px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #ddd;
+  font-size: 14px;
+}
+
+.route-bar label {
+  margin-right: 8px;
+  font-weight: bold;
+}
+
+.route-bar select {
+  padding: 8px 10px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: #fff;
+}    .bus-icon {
   background: transparent;
   border: none;
 }
@@ -61,11 +79,20 @@
 <body>
   <div class="header">送迎バス位置</div>
   <div class="info" id="status">読み込み中...</div>
-  <div id="map"></div>
+  <div class="route-bar">
+  <label for="routeSelector">送迎ルート：</label>
+  <select id="routeSelector">
+    <option value="鴨志田">鴨志田</option>
+    <option value="たまプラ">たまプラ</option>
+    <option value="ニュータウン">ニュータウン</option>
+    <option value="十日市場">十日市場</option>
+    <option value="成瀬">成瀬</option>
+  </select>
+</div>  <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script>
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbxzzWoKWCjjK6GFpaJvgmIOOEmBBQOGcOBvcjhDlL0LHKVjBBcyt6KDFIrHKquetnJ7/exec?action=getLocations";
+ <script>
+  const GAS_BASE_URL = "https://script.google.com/macros/s/AKfycbxzzWoKWCjjK6GFpaJvgmIOOEmBBQOGcOBvcjhDlL0LHKVjBBcyt6KDFIrHKquetnJ7/exec";
 
   const map = L.map("map").setView([35.5457, 139.5331], 13);
 
@@ -74,19 +101,56 @@
   }).addTo(map);
 
   const markers = {};
+  let routeLine = null;
 
   function createBusIcon() {
     return L.divIcon({
       className: "bus-icon",
       html: "<div>🚌</div>",
-      iconSize: [120, 120],
-      iconAnchor: [60, 60]
+      iconSize: [100, 100],
+      iconAnchor: [50, 50]
     });
+  }
+
+  function getRouteColor(routeName) {
+    if (routeName === "鴨志田") return "#e53935";
+    if (routeName === "たまプラ") return "#1e88e5";
+    if (routeName === "ニュータウン") return "#43a047";
+    if (routeName === "十日市場") return "#fb8c00";
+    if (routeName === "成瀬") return "#8e24aa";
+    return "#1565c0";
+  }
+
+  async function loadRoute(routeName) {
+    try {
+      const res = await fetch(
+        `${GAS_BASE_URL}?action=getRoutePath&routeName=${encodeURIComponent(routeName)}`
+      );
+      const path = await res.json();
+
+      if (routeLine) {
+        map.removeLayer(routeLine);
+        routeLine = null;
+      }
+
+      if (Array.isArray(path) && path.length > 0) {
+        routeLine = L.polyline(path, {
+          color: getRouteColor(routeName),
+          weight: 6,
+          opacity: 0.9
+        }).addTo(map);
+
+        map.fitBounds(routeLine.getBounds(), { padding: [20, 20] });
+      }
+    } catch (error) {
+      console.error("route load error", error);
+    }
   }
 
   async function loadBus() {
     try {
-      const res = await fetch(GAS_URL);
+      const selectedRoute = document.getElementById("routeSelector").value;
+      const res = await fetch(`${GAS_BASE_URL}?action=getLocations`);
       const buses = await res.json();
 
       if (!Array.isArray(buses) || buses.length === 0) {
@@ -95,8 +159,11 @@
       }
 
       let visibleCount = 0;
+      const activeIds = new Set();
 
       buses.forEach((bus) => {
+        if ((bus.route_name || "") !== selectedRoute) return;
+
         const lat = Number(bus.lat);
         const lng = Number(bus.lng);
 
@@ -111,6 +178,7 @@
         const note = bus.note || "";
 
         visibleCount++;
+        activeIds.add(id);
 
         const popupHtml =
           `<b>${routeName}</b><br>` +
@@ -129,16 +197,30 @@
         markers[id].bindPopup(popupHtml);
       });
 
+      Object.keys(markers).forEach((id) => {
+        if (!activeIds.has(id)) {
+          map.removeLayer(markers[id]);
+          delete markers[id];
+        }
+      });
+
       document.getElementById("status").textContent =
-        `表示中：${visibleCount}台 / 最終更新: ${new Date().toLocaleTimeString("ja-JP")}`;
+        `${selectedRoute} / 表示中：${visibleCount}台 / 最終更新: ${new Date().toLocaleTimeString("ja-JP")}`;
     } catch (error) {
       console.error(error);
       document.getElementById("status").textContent = "読み込みに失敗しました";
     }
   }
 
-  loadBus();
-  setInterval(loadBus, 10000);
-  </script>
-</body>
+  async function changeRoute() {
+    const routeName = document.getElementById("routeSelector").value;
+    await loadRoute(routeName);
+    await loadBus();
+  }
+
+  document.getElementById("routeSelector").addEventListener("change", changeRoute);
+
+  changeRoute();
+  setInterval(loadBus, 15000);
+</script></body>
 </html>
