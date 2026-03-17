@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>送迎バス現在地 TEST123</title>
+  <title>送迎バス現在地 TEST123</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -101,19 +101,28 @@
     }
 
     .current-location-box {
+      position: relative;
       background: var(--accent-soft);
       border: 1px solid #d7e9fb;
+      min-height: 84px;
+      padding-right: 130px;
     }
 
     .current-location-btn {
-      width: 100%;
-      padding: 12px 14px;
-      font-size: 15px;
+      position: absolute;
+      right: 12px;
+      bottom: 28px;
+      width: auto;
+      padding: 10px 14px;
+      font-size: 14px;
       font-weight: 700;
       border: none;
-      border-radius: 10px;
+      border-radius: 999px;
       background: var(--accent);
       color: #fff;
+      z-index: 2000;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.18);
     }
 
     .current-location-status {
@@ -265,10 +274,16 @@
         border-radius: 8px;
       }
 
+      .current-location-box {
+        min-height: 78px;
+        padding-right: 110px;
+      }
+
       .current-location-btn {
-        padding: 10px 12px;
-        font-size: 15px;
-        border-radius: 8px;
+        right: 10px;
+        bottom: 32px;
+        font-size: 13px;
+        padding: 8px 12px;
       }
 
       .current-location-status {
@@ -372,8 +387,9 @@
   </div>
 
   <script>
-    // ===== GAS WebアプリURL（JSON API用） =====
-const API_BASE = 'https://script.google.com/macros/s/AKfycbx3IdwRgyzBTt-_efBSiBNyMwExDcBTwQAHRuX13VS09fj86jiKBjtw2ITVQLcEheU/exec';    let map;
+    const API_BASE = 'https://script.google.com/macros/s/AKfycbx3IdwRgyzBTt-_efBSiBNyMwExDcBTwQAHRuX13VS09fj86jiKBjtw2ITVQLcEheU/exec';
+
+    let map;
     let mapInitialized = false;
 
     let baseLayers = [];
