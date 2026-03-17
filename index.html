@@ -106,34 +106,29 @@
         border: 1px solid #d7e9fb;
       }
 
+      .current-location-btn {
+        width: 100%;
+        padding: 12px 14px;
+        font-size: 15px;
+        font-weight: 700;
+        border: none;
+        border-radius: 10px;
+        background: var(--accent);
+        color: #fff;
+      }
+
       .current-location-status {
-        margin-top: 0;
+        margin-top: 8px;
         font-size: 13px;
         color: #35516c;
         line-height: 1.5;
       }
 
       .map-wrap {
-        position: relative;
         overflow: hidden;
         border-radius: 14px;
         border: 1px solid #e6e9ee;
         margin-bottom: 12px;
-      }
-
-      .map-floating-location-btn {
-        position: absolute;
-        top: 12px;
-        right: 12px;
-        z-index: 2000;
-        padding: 10px 14px;
-        font-size: 14px;
-        font-weight: 700;
-        border: none;
-        border-radius: 999px;
-        background: rgba(21, 101, 192, 0.95);
-        color: #fff;
-        box-shadow: 0 3px 10px rgba(0,0,0,0.18);
       }
 
       .map-area {
@@ -271,16 +266,15 @@
           border-radius: 8px;
         }
 
-        .current-location-status {
-          margin-top: 0;
-          font-size: 12px;
+        .current-location-btn {
+          padding: 10px 12px;
+          font-size: 15px;
+          border-radius: 8px;
         }
 
-        .map-floating-location-btn {
-          top: 10px;
-          right: 10px;
-          padding: 9px 12px;
-          font-size: 13px;
+        .current-location-status {
+          margin-top: 6px;
+          font-size: 12px;
         }
 
         .map-area {
@@ -350,15 +344,15 @@
 
         <div class="section current-location-box">
           <div class="section-title">あなたの現在地</div>
+          <button type="button" class="current-location-btn" onclick="showUserLocation(true)">
+            現在地を再表示
+          </button>
           <div id="currentLocationStatus" class="current-location-status">
             現在地を確認中...
           </div>
         </div>
 
         <div class="map-wrap">
-          <button type="button" class="map-floating-location-btn" onclick="showUserLocation(true)">
-            現在地
-          </button>
           <div id="map" class="map-area"></div>
         </div>
 
@@ -836,7 +830,7 @@
 
         setInterval(function() {
           loadBusData();
-        }, 15000);
+        }, 30000);
       });
     </script>
   </body>
