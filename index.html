@@ -16,7 +16,6 @@
       --line: #d8dee6;
       --header: #1f3b57;
       --accent: #1565c0;
-      --accent-soft: #e8f4fd;
       --shadow: 0 4px 14px rgba(0,0,0,0.08);
       --radius: 12px;
     }
@@ -128,13 +127,6 @@
       cursor: pointer;
     }
 
-    .current-location-status {
-      margin-top: 0;
-      font-size: 13px;
-      color: #35516c;
-      line-height: 1.5;
-    }
-
     .version {
       margin-bottom: 0;
       font-size: 12px;
@@ -226,10 +218,6 @@
         font-size: 13px;
       }
 
-      .current-location-status {
-        font-size: 12px;
-      }
-
       .map-area {
         height: 74vh;
         min-height: 400px;
@@ -272,12 +260,6 @@
           <option value="十日市場">十日市場</option>
           <option value="成瀬">成瀬</option>
         </select>
-      </div>
-
-      <div class="section">
-        <div class="current-location-status" id="currentLocationStatus">
-          現在地を確認中...
-        </div>
       </div>
 
       <div class="map-wrap">
@@ -438,6 +420,7 @@
         map.removeLayer(userLocationLayer);
         userLocationLayer = null;
       }
+
       if (userAccuracyLayer) {
         map.removeLayer(userAccuracyLayer);
         userAccuracyLayer = null;
@@ -445,14 +428,9 @@
     }
 
     function showUserLocation(forceCenter) {
-      const status = document.getElementById('currentLocationStatus');
-
       if (!navigator.geolocation) {
-        status.textContent = 'この端末は現在地表示に対応していません';
         return;
       }
-
-      status.textContent = '現在地を取得中...';
 
       navigator.geolocation.getCurrentPosition(
         function(position) {
@@ -482,13 +460,9 @@
             map.setView([lat, lng], 15);
             hasAutoCenteredUser = true;
           }
-
-          let text = '現在地を表示しました';
-          if (accuracy) text += '（誤差 約' + Math.round(accuracy) + 'm）';
-          status.textContent = text;
         },
         function(error) {
-          status.textContent = '現在地を取得できませんでした: ' + error.message;
+          console.error(error);
         },
         {
           enableHighAccuracy: true,
@@ -607,7 +581,7 @@
       loadRouteLayers(currentRouteName);
     }
 
-    window.addEventListener('load', async function() {
+    window.addEventListener('load', function() {
       initMap();
       currentRouteName = document.getElementById('routeSelector').value;
 
