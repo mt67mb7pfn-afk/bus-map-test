@@ -51,30 +51,6 @@
       background: #fff;
     }
 
-    .current-location-box {
-      padding: 10px 16px;
-      background: #eef6ff;
-      border-bottom: 1px solid #d7e6f7;
-    }
-
-    .current-location-btn {
-      width: 100%;
-      padding: 10px 12px;
-      font-size: 15px;
-      font-weight: 700;
-      border: none;
-      border-radius: 8px;
-      background: #1565c0;
-      color: #fff;
-    }
-
-    .current-location-status {
-      margin-top: 6px;
-      font-size: 12px;
-      color: #35516c;
-      line-height: 1.5;
-    }
-
     .bus-icon {
       background: transparent;
       border: none;
@@ -112,10 +88,30 @@
       box-shadow: 0 1px 4px rgba(0,0,0,0.12);
     }
 
+    .map-wrap {
+      position: relative;
+    }
+
     #map {
       width: 100%;
-      height: calc(100vh - 220px);
-      min-height: 420px;
+      height: calc(100vh - 200px);
+      min-height: 360px;
+    }
+
+    .floating-location-btn {
+      position: absolute;
+      right: 16px;
+      bottom: 16px;
+      z-index: 1000;
+      padding: 12px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      border: none;
+      border-radius: 999px;
+      background: #1565c0;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+      cursor: pointer;
     }
 
     @media (max-width: 480px) {
@@ -125,8 +121,7 @@
       }
 
       .info,
-      .route-bar,
-      .current-location-box {
+      .route-bar {
         padding-left: 12px;
         padding-right: 12px;
       }
@@ -139,8 +134,15 @@
       }
 
       #map {
-        height: calc(100vh - 200px);
+        height: calc(100vh - 190px);
         min-height: 360px;
+      }
+
+      .floating-location-btn {
+        right: 12px;
+        bottom: 12px;
+        padding: 10px 12px;
+        font-size: 13px;
       }
     }
   </style>
@@ -160,15 +162,12 @@
     </select>
   </div>
 
-  <div class="current-location-box">
-    <button type="button" class="current-location-btn" onclick="showUserLocation(true)">
-      現在地を再表示
+  <div class="map-wrap">
+    <div id="map"></div>
+    <button type="button" class="floating-location-btn" onclick="showUserLocation(true)">
+      現在地
     </button>
-  
-    </div>
   </div>
-
-  <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
@@ -223,14 +222,10 @@
     }
 
     function showUserLocation(forceCenter) {
-      const status = document.getElementById("currentLocationStatus");
-
       if (!navigator.geolocation) {
-        status.textContent = "この端末は現在地表示に対応していません";
+        alert("この端末は現在地表示に対応していません");
         return;
       }
-
-      status.textContent = "現在地を取得中...";
 
       navigator.geolocation.getCurrentPosition(
         function(position) {
@@ -260,15 +255,9 @@
             map.setView([lat, lng], 15);
             hasAutoCenteredUser = true;
           }
-
-          let text = "現在地を表示しました";
-          if (accuracy) {
-            text += "（誤差 約" + Math.round(accuracy) + "m）";
-          }
-          status.textContent = text;
         },
         function(error) {
-          status.textContent = "現在地を取得できませんでした: " + error.message;
+          alert("現在地を取得できませんでした: " + error.message);
         },
         {
           enableHighAccuracy: true,
