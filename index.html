@@ -1,46 +1,840 @@
-function doGet(e) {
-  if (e && e.parameter && e.parameter.api) {
-    const api = e.parameter.api;
-    const routeName = e.parameter.routeName || '';
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>送迎バス現在地</title>
 
-    let result = [];
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    if (api === 'busLocations') {
-      result = getBusLocations();
-    } else if (api === 'routePath') {
-      result = getRoutePath(routeName);
-    } else if (api === 'restrictedPath') {
-      result = getRestrictedPath(routeName);
-    } else if (api === 'stops') {
-      result = getStops(routeName);
-    } else if (api === 'notices') {
-      result = getNotices();
-    } else {
-      result = { error: 'unknown api' };
+  <style>
+    :root {
+      --bg: #f3f5f7;
+      --card: #ffffff;
+      --text: #1f2937;
+      --sub: #6b7280;
+      --line: #d8dee6;
+      --header: #1f3b57;
+      --accent: #1565c0;
+      --accent-soft: #e8f4fd;
+      --next-bg: #fff4d6;
+      --next-border: #f3d37a;
+      --notice-bg: #f7f8fa;
+      --shadow: 0 4px 14px rgba(0,0,0,0.08);
+      --radius: 12px;
     }
 
-    return ContentService
-      .createTextOutput(JSON.stringify(result))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
+    * {
+      box-sizing: border-box;
+    }
 
-  const page = e && e.parameter && e.parameter.page ? e.parameter.page : 'map';
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: sans-serif;
+      -webkit-text-size-adjust: 100%;
+    }
 
-  if (page === 'sender') {
-    const template = HtmlService.createTemplateFromFile('sender');
-    template.busId = e && e.parameter && e.parameter.busId ? e.parameter.busId : 'BUS01';
-    template.routeName = e && e.parameter && e.parameter.routeName ? e.parameter.routeName : '鴨志田';
-    template.statusText = e && e.parameter && e.parameter.status ? e.parameter.status : '運行中';
-    template.autoStart = e && e.parameter && e.parameter.auto === '1';
+    body {
+      min-height: 100vh;
+    }
 
-    return template.evaluate()
-      .addMetaTag('charset', 'UTF-8')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1, shrink-to-fit=no')
-      .setTitle('送迎バス位置送信');
-  }
+    .header {
+      background: var(--header);
+      color: #fff;
+      padding: 12px 16px 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
 
-  return HtmlService.createHtmlOutputFromFile('map')
-    .addMetaTag('charset', 'UTF-8')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-    .setTitle('送迎バス現在地');
-}
+    .header-title {
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .header-sub {
+      margin-top: 4px;
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    .page {
+      width: 100%;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 12px;
+    }
+
+    .main-card {
+      background: var(--card);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+
+    .section {
+      background: var(--card);
+      border: 1px solid #eef1f4;
+      border-radius: var(--radius);
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--sub);
+      margin-bottom: 8px;
+      letter-spacing: 0.02em;
+    }
+
+    .selector {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 16px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--text);
+    }
+
+    .current-location-box {
+      background: var(--accent-soft);
+      border: 1px solid #d7e9fb;
+    }
+
+    .current-location-btn {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 15px;
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .current-location-status {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #35516c;
+      line-height: 1.5;
+    }
+
+    .map-wrap {
+      overflow: hidden;
+      border-radius: 14px;
+      border: 1px solid #e6e9ee;
+      margin-bottom: 12px;
+    }
+
+    .map-area {
+      height: 68vh;
+      min-height: 420px;
+      background: #e5e7eb;
+    }
+
+    .version {
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: #b91c1c;
+      font-weight: 700;
+    }
+
+    .next-stop-box {
+      background: var(--next-bg);
+      border: 1px solid var(--next-border);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    .next-stop-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: #8a6700;
+      margin-bottom: 6px;
+    }
+
+    .next-stop-name {
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 4px;
+    }
+
+    .next-stop-time {
+      font-size: 16px;
+      font-weight: 700;
+      color: #5f4a00;
+    }
+
+    .notice-box {
+      background: var(--notice-bg);
+      border: 1px solid #eceff3;
+      border-radius: 12px;
+      padding: 12px;
+      line-height: 1.7;
+      font-size: 13px;
+      color: #4b5563;
+    }
+
+    .notice-title {
+      font-weight: 700;
+      font-size: 13px;
+      color: #374151;
+      margin-bottom: 6px;
+    }
+
+    .error {
+      color: #c62828;
+      font-weight: bold;
+    }
+
+    .bus-icon {
+      background: transparent;
+      border: none;
+    }
+
+    .bus-icon div {
+      font-size: 52px;
+      width: 70px;
+      height: 70px;
+      line-height: 70px;
+      text-align: center;
+      text-shadow:
+        -3px -3px 0 #fff,
+         3px -3px 0 #fff,
+        -3px  3px 0 #fff,
+         3px  3px 0 #fff,
+         0px  0px 6px rgba(0,0,0,0.35);
+    }
+
+    .stop-label {
+      background: transparent;
+      border: none;
+    }
+
+    .stop-label div {
+      display: inline-block;
+      background: rgba(255,255,255,0.95);
+      border: 1px solid #d7dde5;
+      border-radius: 8px;
+      padding: 3px 7px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #263238;
+      white-space: nowrap;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    }
+
+    @media (max-width: 480px) {
+      .header {
+        padding: 10px 12px 9px;
+      }
+
+      .header-title {
+        font-size: 16px;
+      }
+
+      .page {
+        padding: 6px;
+      }
+
+      .main-card {
+        padding: 8px;
+        border-radius: 12px;
+      }
+
+      .section {
+        padding: 8px;
+        margin-bottom: 8px;
+        border-radius: 10px;
+      }
+
+      .section-title {
+        font-size: 12px;
+        margin-bottom: 6px;
+      }
+
+      .selector {
+        padding: 10px 12px;
+        font-size: 15px;
+        border-radius: 8px;
+      }
+
+      .current-location-btn {
+        padding: 10px 12px;
+        font-size: 15px;
+        border-radius: 8px;
+      }
+
+      .current-location-status {
+        margin-top: 6px;
+        font-size: 12px;
+      }
+
+      .map-area {
+        height: 72vh;
+        min-height: 360px;
+      }
+
+      .version {
+        margin-bottom: 8px;
+        font-size: 11px;
+      }
+
+      .next-stop-box {
+        padding: 12px;
+        margin-bottom: 8px;
+        border-radius: 12px;
+      }
+
+      .next-stop-name {
+        font-size: 21px;
+      }
+
+      .next-stop-time {
+        font-size: 15px;
+      }
+
+      .notice-box {
+        padding: 10px;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+
+      .bus-icon div {
+        font-size: 48px;
+        width: 64px;
+        height: 64px;
+        line-height: 64px;
+      }
+
+      .stop-label div {
+        font-size: 10px;
+        padding: 2px 6px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <div class="header-title">送迎バス現在地</div>
+    <div class="header-sub">地図上で送迎バスの現在位置をご確認いただけます</div>
+  </div>
+
+  <div class="page">
+    <div class="main-card">
+
+      <div class="section">
+        <div class="section-title">送迎ルート</div>
+        <select id="routeSelector" class="selector">
+          <option value="鴨志田">鴨志田</option>
+          <option value="たまプラ">たまプラ</option>
+          <option value="ニュータウン">ニュータウン</option>
+          <option value="十日市場">十日市場</option>
+          <option value="成瀬">成瀬</option>
+        </select>
+      </div>
+
+      <div class="section current-location-box">
+        <div class="section-title">あなたの現在地</div>
+        <button type="button" class="current-location-btn" onclick="showUserLocation(true)">
+          現在地を再表示
+        </button>
+        <div id="currentLocationStatus" class="current-location-status">
+          現在地を確認中...
+        </div>
+      </div>
+
+      <div class="map-wrap">
+        <div id="map" class="map-area"></div>
+      </div>
+
+      <div class="version">軽量版 / GitHub公開用</div>
+
+      <div id="nextStopInfo" class="next-stop-box">
+        <div class="next-stop-label">次の停留所</div>
+        <div class="next-stop-name">計算中...</div>
+        <div class="next-stop-time"></div>
+      </div>
+
+      <div class="notice-box" id="noticeBox">
+        <div class="notice-title">お知らせ</div>
+        <div>・到着時刻は交通状況により前後する場合があります</div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // ===== GAS WebアプリURL（JSON API用） =====
+    const API_BASE = 'https://script.google.com/macros/s/AKfycbz9Y7B3a-mWWLvnZh4Rdxuq2Zpmw2lgPllePVz8gM_e4W1pFlnnezQNVqVr_FSeBvur/exec';
+
+    let map;
+    let mapInitialized = false;
+
+    let baseLayers = [];
+    let busLayers = [];
+    let stopLabelLayers = [];
+    let stopCache = [];
+    let currentVisibleBuses = [];
+    let currentRouteName = '';
+    let userLocationLayer = null;
+    let userAccuracyLayer = null;
+    let hasAutoCenteredUser = false;
+
+    function calcDistanceKm(lat1, lng1, lat2, lng2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function estimateMinutesByDistance(km) {
+      const avgSpeedKmH = 20;
+      return Math.max(1, Math.round((km / avgSpeedKmH) * 60));
+    }
+
+    function shouldHideBus(bus) {
+      const note = (bus.note || '').trim();
+      const status = (bus.status || '').trim();
+
+      if (note.indexOf('非公開') !== -1) return true;
+      if (status.indexOf('非公開') !== -1) return true;
+      if (status.indexOf('回送') !== -1) return true;
+      if (!bus.updated_at) return true;
+
+      const lastUpdate = new Date(bus.updated_at);
+      const now = new Date();
+      const diffMinutes = (now - lastUpdate) / 1000 / 60;
+
+      return diffMinutes > 5;
+    }
+
+    function getRouteColor(routeName) {
+      if (routeName === '鴨志田') return { main: '#e53935', dark: '#b71c1c' };
+      if (routeName === 'たまプラ') return { main: '#1e88e5', dark: '#0d47a1' };
+      if (routeName === 'ニュータウン') return { main: '#43a047', dark: '#1b5e20' };
+      if (routeName === '十日市場') return { main: '#fb8c00', dark: '#e65100' };
+      if (routeName === '成瀬') return { main: '#8e24aa', dark: '#4a148c' };
+      return { main: '#1e88e5', dark: '#0d47a1' };
+    }
+
+    function findCurrentAndNextStop(bus, stops) {
+      if (!bus || !stops || stops.length === 0) return null;
+
+      const sortedStops = stops.slice().sort((a, b) => Number(a.stop_order) - Number(b.stop_order));
+
+      let nearestIndex = -1;
+      let minDistance = Infinity;
+
+      sortedStops.forEach((stop, index) => {
+        if (!isNaN(stop.lat) && !isNaN(stop.lng)) {
+          const distanceKm = calcDistanceKm(
+            Number(bus.lat),
+            Number(bus.lng),
+            Number(stop.lat),
+            Number(stop.lng)
+          );
+
+          if (distanceKm < minDistance) {
+            minDistance = distanceKm;
+            nearestIndex = index;
+          }
+        }
+      });
+
+      if (nearestIndex === -1) return null;
+
+      const currentStop = sortedStops[nearestIndex];
+      let nextIndex = nearestIndex + 1;
+      if (nextIndex >= sortedStops.length) nextIndex = 0;
+
+      const nextStop = sortedStops[nextIndex];
+      const nextDistanceKm = calcDistanceKm(
+        Number(bus.lat),
+        Number(bus.lng),
+        Number(nextStop.lat),
+        Number(nextStop.lng)
+      );
+
+      return {
+        currentStop,
+        nextStop,
+        etaMin: estimateMinutesByDistance(nextDistanceKm)
+      };
+    }
+
+    async function fetchJson(apiName, routeName = '') {
+      const url = routeName
+        ? `${API_BASE}?api=${encodeURIComponent(apiName)}&routeName=${encodeURIComponent(routeName)}`
+        : `${API_BASE}?api=${encodeURIComponent(apiName)}`;
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('通信エラー');
+      return await res.json();
+    }
+
+    function initMap() {
+      if (mapInitialized) return;
+
+      map = L.map('map').setView([35.5535, 139.5795], 13);
+
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+      }).addTo(map);
+
+      mapInitialized = true;
+    }
+
+    function clearBaseLayers() {
+      baseLayers.forEach(layer => map.removeLayer(layer));
+      baseLayers = [];
+
+      stopLabelLayers.forEach(layer => {
+        if (map.hasLayer(layer)) map.removeLayer(layer);
+      });
+      stopLabelLayers = [];
+    }
+
+    function clearBusLayers() {
+      busLayers.forEach(layer => map.removeLayer(layer));
+      busLayers = [];
+    }
+
+    function addBaseLayer(layer) {
+      layer.addTo(map);
+      baseLayers.push(layer);
+    }
+
+    function addBusLayer(layer) {
+      layer.addTo(map);
+      busLayers.push(layer);
+    }
+
+    function addStopLabelLayer(layer) {
+      layer.addTo(map);
+      stopLabelLayers.push(layer);
+    }
+
+    function updateStopLabelVisibility() {
+      const zoom = map.getZoom();
+
+      stopLabelLayers.forEach(layer => {
+        if (zoom >= 15) {
+          if (!map.hasLayer(layer)) map.addLayer(layer);
+        } else {
+          if (map.hasLayer(layer)) map.removeLayer(layer);
+        }
+      });
+    }
+
+    function renderNextStopInfo(bus, stops) {
+      const box = document.getElementById('nextStopInfo');
+
+      if (!bus || !stops || stops.length === 0) {
+        box.innerHTML =
+          '<div class="next-stop-label">次の停留所</div>' +
+          '<div class="next-stop-name">表示できません</div>' +
+          '<div class="next-stop-time"></div>';
+        return;
+      }
+
+      const stopInfo = findCurrentAndNextStop(bus, stops);
+
+      if (!stopInfo) {
+        box.innerHTML =
+          '<div class="next-stop-label">次の停留所</div>' +
+          '<div class="next-stop-name">判定できません</div>' +
+          '<div class="next-stop-time"></div>';
+        return;
+      }
+
+      box.innerHTML =
+        '<div class="next-stop-label">次の停留所</div>' +
+        '<div class="next-stop-name">' + (stopInfo.nextStop.stop_name || '') + '</div>' +
+        '<div class="next-stop-time">あと 約' + stopInfo.etaMin + '分</div>';
+    }
+
+    function renderBusMarkers() {
+      clearBusLayers();
+
+      currentVisibleBuses.forEach(bus => {
+        if (bus.lat !== '' && bus.lng !== '') {
+          const busIcon = L.divIcon({
+            html: '<div>🚌</div>',
+            className: 'bus-icon',
+            iconSize: [70, 70],
+            iconAnchor: [35, 35]
+          });
+
+          const marker = L.marker([bus.lat, bus.lng], { icon: busIcon }).bindPopup(
+            '<b>' + (bus.route_name || '') + '</b><br>' +
+            '状態: ' + (bus.status || '')
+          );
+
+          addBusLayer(marker);
+        }
+      });
+    }
+
+    function clearUserLocation() {
+      if (userLocationLayer) {
+        map.removeLayer(userLocationLayer);
+        userLocationLayer = null;
+      }
+      if (userAccuracyLayer) {
+        map.removeLayer(userAccuracyLayer);
+        userAccuracyLayer = null;
+      }
+    }
+
+    function showUserLocation(forceCenter) {
+      const status = document.getElementById('currentLocationStatus');
+
+      if (!navigator.geolocation) {
+        status.textContent = 'この端末は現在地表示に対応していません';
+        return;
+      }
+
+      status.textContent = '現在地を取得中...';
+
+      navigator.geolocation.getCurrentPosition(
+        function(position) {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const accuracy = position.coords.accuracy || 0;
+
+          clearUserLocation();
+
+          userAccuracyLayer = L.circle([lat, lng], {
+            radius: accuracy,
+            color: '#1976d2',
+            fillColor: '#64b5f6',
+            fillOpacity: 0.15,
+            weight: 1
+          }).addTo(map);
+
+          userLocationLayer = L.circleMarker([lat, lng], {
+            radius: 8,
+            color: '#1565c0',
+            fillColor: '#1e88e5',
+            fillOpacity: 1,
+            weight: 2
+          }).bindPopup('あなたの現在地').addTo(map);
+
+          if (forceCenter || !hasAutoCenteredUser) {
+            map.setView([lat, lng], 15);
+            hasAutoCenteredUser = true;
+          }
+
+          let text = '現在地を表示しました';
+          if (accuracy) text += '（誤差 約' + Math.round(accuracy) + 'm）';
+          status.textContent = text;
+        },
+        function(error) {
+          status.textContent = '現在地を取得できませんでした: ' + error.message;
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 30000
+        }
+      );
+    }
+
+    async function loadNotices() {
+      try {
+        const notices = await fetchJson('notices');
+        const box = document.getElementById('noticeBox');
+
+        if (!notices || notices.length === 0) {
+          box.innerHTML =
+            '<div class="notice-title">お知らせ</div>' +
+            '<div>・到着時刻は交通状況により前後する場合があります</div>';
+          return;
+        }
+
+        box.innerHTML =
+          '<div class="notice-title">お知らせ</div>' +
+          notices.map(n => '<div>・' + n + '</div>').join('');
+      } catch (e) {
+        // 固定文のまま
+      }
+    }
+
+    async function loadRouteLayers(routeName) {
+      clearBaseLayers();
+      stopCache = [];
+
+      try {
+        const [pathData, restrictedPath, stops] = await Promise.all([
+          fetchJson('routePath', routeName),
+          fetchJson('restrictedPath', routeName),
+          fetchJson('stops', routeName)
+        ]);
+
+        if (pathData && pathData.length > 0) {
+          const routeColors = getRouteColor(routeName);
+
+          const routeLine = L.polyline(pathData, {
+            color: routeColors.main,
+            weight: 6,
+            opacity: 1
+          });
+
+          addBaseLayer(routeLine);
+          map.fitBounds(pathData);
+        }
+
+        if (restrictedPath && restrictedPath.length > 0) {
+          const restrictedLine = L.polyline(restrictedPath, {
+            color: '#444',
+            weight: 5,
+            opacity: 1,
+            dashArray: '10,10'
+          });
+
+          addBaseLayer(restrictedLine);
+        }
+
+        stopCache = stops || [];
+
+        if (stopCache.length > 0) {
+          stopCache.forEach(stop => {
+            if (!isNaN(stop.lat) && !isNaN(stop.lng)) {
+              let isNextStop = false;
+
+              if (currentVisibleBuses.length > 0) {
+                const nextInfo = findCurrentAndNextStop(currentVisibleBuses[0], stopCache);
+                if (nextInfo && nextInfo.nextStop.stop_name === stop.stop_name) {
+                  isNextStop = true;
+                }
+              }
+
+              const routeColors = getRouteColor(currentRouteName);
+
+              const stopMarker = L.circleMarker([stop.lat, stop.lng], {
+                radius: isNextStop ? 16 : 10,
+                color: isNextStop ? '#e65100' : routeColors.dark,
+                fillColor: isNextStop ? '#ff9800' : routeColors.main,
+                fillOpacity: isNextStop ? 1 : 0.85,
+                weight: isNextStop ? 4 : 3
+              }).bindPopup(
+                '<b>' + (stop.stop_name || '') + '</b><br>' +
+                '順番: ' + (stop.stop_order || '') + '<br>' +
+                '備考: ' + (stop.note || '')
+              );
+
+              addBaseLayer(stopMarker);
+
+              const stopLabel = L.marker([stop.lat, stop.lng], {
+                icon: L.divIcon({
+                  className: 'stop-label',
+                  html: '<div>' + (stop.stop_name || '') + '</div>',
+                  iconSize: [120, 20],
+                  iconAnchor: [-8, 10]
+                })
+              });
+
+              addStopLabelLayer(stopLabel);
+            }
+          });
+        }
+
+        updateStopLabelVisibility();
+
+        if (currentVisibleBuses.length > 0) {
+          renderNextStopInfo(currentVisibleBuses[0], stopCache);
+        } else {
+          renderNextStopInfo(null, null);
+        }
+      } catch (e) {
+        document.getElementById('nextStopInfo').innerHTML =
+          '<div class="next-stop-label">次の停留所</div>' +
+          '<div class="next-stop-name error">ルート読込エラー</div>' +
+          '<div class="next-stop-time"></div>';
+      }
+    }
+
+    async function loadBusData() {
+      initMap();
+
+      currentRouteName = document.getElementById('routeSelector').value;
+      currentVisibleBuses = [];
+
+      try {
+        const data = await fetchJson('busLocations');
+
+        if (data && data.length > 0) {
+          data.forEach(bus => {
+            if (shouldHideBus(bus)) return;
+            if (String(bus.route_name) !== String(currentRouteName)) return;
+            currentVisibleBuses.push(bus);
+          });
+        }
+
+        renderBusMarkers();
+
+        if (stopCache.length > 0 && currentVisibleBuses.length > 0) {
+          renderNextStopInfo(currentVisibleBuses[0], stopCache);
+        } else if (currentVisibleBuses.length === 0) {
+          renderNextStopInfo(null, null);
+        }
+      } catch (e) {
+        document.getElementById('nextStopInfo').innerHTML =
+          '<div class="next-stop-label">次の停留所</div>' +
+          '<div class="next-stop-name error">データ取得エラー</div>' +
+          '<div class="next-stop-time"></div>';
+      }
+    }
+
+    async function changeRoute() {
+      currentRouteName = document.getElementById('routeSelector').value;
+      currentVisibleBuses = [];
+      stopCache = [];
+      clearBusLayers();
+      await loadBusData();
+      await loadRouteLayers(currentRouteName);
+    }
+
+    window.addEventListener('load', async function() {
+      initMap();
+      currentRouteName = document.getElementById('routeSelector').value;
+
+      await loadBusData();
+      await loadRouteLayers(currentRouteName);
+      await loadNotices();
+
+      document.getElementById('routeSelector').addEventListener('change', function() {
+        changeRoute();
+      });
+
+      map.on('zoomend', function() {
+        updateStopLabelVisibility();
+      });
+
+      setTimeout(function() {
+        showUserLocation(false);
+      }, 2500);
+
+      setInterval(function() {
+        loadBusData();
+      }, 20000);
+    });
+  </script>
+</body>
+</html>
