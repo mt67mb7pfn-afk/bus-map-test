@@ -51,6 +51,30 @@
       background: #fff;
     }
 
+    .current-location-box {
+      padding: 10px 16px;
+      background: #eef6ff;
+      border-bottom: 1px solid #d7e6f7;
+    }
+
+    .current-location-btn {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 15px;
+      font-weight: 700;
+      border: none;
+      border-radius: 8px;
+      background: #1565c0;
+      color: #fff;
+    }
+
+    .current-location-status {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #35516c;
+      line-height: 1.5;
+    }
+
     .bus-icon {
       background: transparent;
       border: none;
@@ -90,8 +114,34 @@
 
     #map {
       width: 100%;
-      height: calc(100vh - 140px);
+      height: calc(100vh - 220px);
       min-height: 420px;
+    }
+
+    @media (max-width: 480px) {
+      .header {
+        padding: 10px 12px;
+        font-size: 16px;
+      }
+
+      .info,
+      .route-bar,
+      .current-location-box {
+        padding-left: 12px;
+        padding-right: 12px;
+      }
+
+      .bus-icon div {
+        font-size: 64px;
+        width: 82px;
+        height: 82px;
+        line-height: 82px;
+      }
+
+      #map {
+        height: calc(100vh - 210px);
+        min-height: 360px;
+      }
     }
   </style>
 </head>
@@ -110,6 +160,15 @@
     </select>
   </div>
 
+  <div class="current-location-box">
+    <button type="button" class="current-location-btn" onclick="showUserLocation(true)">
+      現在地を表示し直す
+    </button>
+    <div id="currentLocationStatus" class="current-location-status">
+      現在地を確認中...
+    </div>
+  </div>
+
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -125,6 +184,9 @@
     const markers = {};
     let routeLine = null;
     let stopLayers = [];
+    let userLocationLayer = null;
+    let userAccuracyLayer = null;
+    let hasAutoCenteredUser = false;
 
     function createBusIcon() {
       return L.divIcon({
@@ -147,6 +209,74 @@
     function clearStops() {
       stopLayers.forEach(layer => map.removeLayer(layer));
       stopLayers = [];
+    }
+
+    function clearUserLocation() {
+      if (userLocationLayer) {
+        map.removeLayer(userLocationLayer);
+        userLocationLayer = null;
+      }
+
+      if (userAccuracyLayer) {
+        map.removeLayer(userAccuracyLayer);
+        userAccuracyLayer = null;
+      }
+    }
+
+    function showUserLocation(forceCenter) {
+      const status = document.getElementById("currentLocationStatus");
+
+      if (!navigator.geolocation) {
+        status.textContent = "この端末は現在地表示に対応していません";
+        return;
+      }
+
+      status.textContent = "現在地を取得中...";
+
+      navigator.geolocation.getCurrentPosition(
+        function(position) {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const accuracy = position.coords.accuracy || 0;
+
+          clearUserLocation();
+
+          userAccuracyLayer = L.circle([lat, lng], {
+            radius: accuracy,
+            color: "#1976d2",
+            fillColor: "#64b5f6",
+            fillOpacity: 0.15,
+            weight: 1
+          }).addTo(map);
+
+          userLocationLayer = L.circleMarker([lat, lng], {
+            radius: 8,
+            color: "#1565c0",
+            fillColor: "#1e88e5",
+            fillOpacity: 1,
+            weight: 2
+          }).bindPopup("あなたの現在地").addTo(map);
+
+          if (forceCenter || !hasAutoCenteredUser) {
+            map.setView([lat, lng], 15);
+            hasAutoCenteredUser = true;
+          }
+
+          let text = "現在地を表示しました";
+          if (accuracy) {
+            text += "（誤差 約" + Math.round(accuracy) + "m）";
+          }
+          status.textContent = text;
+        },
+        function(error) {
+          status.textContent = "現在地を取得できませんでした: " + error.message;
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 30000
+        }
+      );
     }
 
     async function loadRoute(routeName) {
@@ -244,12 +374,15 @@
           if ((bus.route_name || "") !== selectedRoute) return;
 
           const status = (bus.status || "").trim();
-const note = (bus.note || "").trim();
+          const note = (bus.note || "").trim();
 
-if (status === "回送" || status === "非公開" || note.includes("非公開")) {
-  return;
-}          const lat = Number(bus.lat);
+          if (status.includes("回送") || status.includes("非公開") || note.includes("非公開")) {
+            return;
+          }
+
+          const lat = Number(bus.lat);
           const lng = Number(bus.lng);
+
           if (Number.isNaN(lat) || Number.isNaN(lng) || lat === 0 || lng === 0) return;
 
           const id = bus.bus_id || "";
@@ -298,6 +431,11 @@ if (status === "回送" || status === "非公開" || note.includes("非公開"))
     document.getElementById("routeSelector").addEventListener("change", changeRoute);
 
     changeRoute();
+
+    setTimeout(() => {
+      showUserLocation(false);
+    }, 1000);
+
     setInterval(loadBus, 15000);
   </script>
 </body>
