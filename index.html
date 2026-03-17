@@ -29,21 +29,61 @@
       background: #ffffff;
       border-bottom: 1px solid #ddd;
       font-size: 14px;
+      line-height: 1.5;
     }
 
     .route-bar {
       padding: 10px 16px;
       background: #ffffff;
       border-bottom: 1px solid #ddd;
+      font-size: 14px;
+    }
+
+    .route-bar label {
+      margin-right: 8px;
+      font-weight: bold;
     }
 
     .route-bar select {
-      padding: 8px;
+      padding: 8px 10px;
+      font-size: 14px;
+      border: 1px solid #ccc;
       border-radius: 8px;
+      background: #fff;
+    }
+
+    .map-wrap {
+      position: relative;
     }
 
     #map {
       height: calc(100vh - 120px);
+      min-height: 420px;
+    }
+
+    .floating-location-btn {
+      position: absolute;
+      right: 16px;
+      bottom: 16px;
+      z-index: 1000;
+      padding: 12px 14px;
+      font-size: 14px;
+      font-weight: bold;
+      border: none;
+      border-radius: 999px;
+      background: #1565c0;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+      cursor: pointer;
+    }
+
+    .floating-location-btn:active {
+      transform: translateY(1px);
+    }
+
+    .bus-icon {
+      background: transparent;
+      border: none;
     }
 
     .bus-icon div {
@@ -59,6 +99,61 @@
          3px  3px 0 #fff,
          0px  0px 6px rgba(0,0,0,0.35);
     }
+
+    .stop-label {
+      background: transparent;
+      border: none;
+    }
+
+    .stop-label div {
+      display: inline-block;
+      background: rgba(255,255,255,0.95);
+      border: 1px solid #d7dde5;
+      border-radius: 8px;
+      padding: 3px 7px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #263238;
+      white-space: nowrap;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    }
+
+    @media (max-width: 480px) {
+      .header {
+        padding: 10px 12px;
+        font-size: 16px;
+      }
+
+      .info,
+      .route-bar {
+        padding-left: 12px;
+        padding-right: 12px;
+      }
+
+      #map {
+        height: calc(100vh - 110px);
+        min-height: 360px;
+      }
+
+      .floating-location-btn {
+        right: 12px;
+        bottom: 12px;
+        padding: 10px 12px;
+        font-size: 13px;
+      }
+
+      .bus-icon div {
+        font-size: 56px;
+        width: 70px;
+        height: 70px;
+        line-height: 70px;
+      }
+
+      .stop-label div {
+        font-size: 10px;
+        padding: 2px 6px;
+      }
+    }
   </style>
 </head>
 
@@ -67,6 +162,7 @@
   <div class="info" id="status">読み込み中...</div>
 
   <div class="route-bar">
+    <label for="routeSelector">送迎ルート：</label>
     <select id="routeSelector">
       <option value="鴨志田">鴨志田</option>
       <option value="たまプラ">たまプラ</option>
@@ -76,7 +172,12 @@
     </select>
   </div>
 
-  <div id="map"></div>
+  <div class="map-wrap">
+    <div id="map"></div>
+    <button type="button" class="floating-location-btn" onclick="showUserLocation(true)">
+      現在地
+    </button>
+  </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -85,13 +186,16 @@
 
     const map = L.map("map").setView([35.5457, 139.5331], 13);
 
-    // ★ 見やすい地図に変更済み
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      attribution: "&copy; OpenStreetMap contributors &copy; CARTO"
     }).addTo(map);
 
     const markers = {};
     let routeLine = null;
+    let stopLayers = [];
+    let userLocationLayer = null;
+    let userAccuracyLayer = null;
+    let hasAutoCenteredUser = false;
 
     function createBusIcon() {
       return L.divIcon({
@@ -111,13 +215,78 @@
       return "#1565c0";
     }
 
+    function clearStops() {
+      stopLayers.forEach(layer => map.removeLayer(layer));
+      stopLayers = [];
+    }
+
+    function clearUserLocation() {
+      if (userLocationLayer) {
+        map.removeLayer(userLocationLayer);
+        userLocationLayer = null;
+      }
+      if (userAccuracyLayer) {
+        map.removeLayer(userAccuracyLayer);
+        userAccuracyLayer = null;
+      }
+    }
+
+    function showUserLocation(forceCenter) {
+      if (!navigator.geolocation) {
+        alert("この端末は現在地表示に対応していません");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        function(position) {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const accuracy = position.coords.accuracy || 0;
+
+          clearUserLocation();
+
+          userAccuracyLayer = L.circle([lat, lng], {
+            radius: accuracy,
+            color: "#1976d2",
+            fillColor: "#64b5f6",
+            fillOpacity: 0.15,
+            weight: 1
+          }).addTo(map);
+
+          userLocationLayer = L.circleMarker([lat, lng], {
+            radius: 8,
+            color: "#1565c0",
+            fillColor: "#1e88e5",
+            fillOpacity: 1,
+            weight: 2
+          }).bindPopup("あなたの現在地").addTo(map);
+
+          if (forceCenter || !hasAutoCenteredUser) {
+            map.setView([lat, lng], 15);
+            hasAutoCenteredUser = true;
+          }
+        },
+        function(error) {
+          alert("現在地を取得できませんでした: " + error.message);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 30000
+        }
+      );
+    }
+
     async function loadRoute(routeName) {
       try {
-        const res = await fetch(`${GAS_BASE_URL}?action=getRoutePath&routeName=${encodeURIComponent(routeName)}`);
+        const res = await fetch(
+          `${GAS_BASE_URL}?action=getRoutePath&routeName=${encodeURIComponent(routeName)}`
+        );
         const path = await res.json();
 
         if (routeLine) {
           map.removeLayer(routeLine);
+          routeLine = null;
         }
 
         if (Array.isArray(path) && path.length > 0) {
@@ -129,73 +298,139 @@
           map.fitBounds(routeLine.getBounds(), { padding: [20, 20] });
         }
       } catch (e) {
-        console.error(e);
+        console.error("route load error", e);
+      }
+    }
+
+    async function loadStops(routeName) {
+      try {
+        clearStops();
+
+        const res = await fetch(
+          `${GAS_BASE_URL}?action=getStops&routeName=${encodeURIComponent(routeName)}`
+        );
+        const stops = await res.json();
+
+        if (!Array.isArray(stops) || stops.length === 0) return;
+
+        const routeColor = getRouteColor(routeName);
+
+        stops.forEach((stop) => {
+          const lat = Number(stop.lat);
+          const lng = Number(stop.lng);
+
+          if (Number.isNaN(lat) || Number.isNaN(lng)) return;
+
+          const stopMarker = L.circleMarker([lat, lng], {
+            radius: 8,
+            color: routeColor,
+            fillColor: routeColor,
+            fillOpacity: 0.85,
+            weight: 2
+          }).bindPopup(
+            `<b>${stop.stop_name || ""}</b><br>` +
+            `順番: ${stop.stop_order || ""}` +
+            (stop.note ? `<br>備考: ${stop.note}` : "")
+          );
+
+          stopMarker.addTo(map);
+          stopLayers.push(stopMarker);
+
+          const stopLabel = L.marker([lat, lng], {
+            icon: L.divIcon({
+              className: "stop-label",
+              html: `<div>${stop.stop_name || ""}</div>`,
+              iconSize: [120, 20],
+              iconAnchor: [-8, 10]
+            })
+          });
+
+          stopLabel.addTo(map);
+          stopLayers.push(stopLabel);
+        });
+      } catch (e) {
+        console.error("stops load error", e);
       }
     }
 
     async function loadBus() {
-      const selectedRoute = document.getElementById("routeSelector").value;
+      try {
+        const selectedRoute = document.getElementById("routeSelector").value;
+        const res = await fetch(`${GAS_BASE_URL}?action=getLocations`);
+        const buses = await res.json();
 
-      const res = await fetch(`${GAS_BASE_URL}?action=getLocations`);
-      const buses = await res.json();
+        let count = 0;
+        const activeIds = new Set();
 
-      let count = 0;
-      const activeIds = new Set();
+        buses.forEach(bus => {
+          if ((bus.route_name || "") !== selectedRoute) return;
 
-      buses.forEach(bus => {
-        if ((bus.route_name || "") !== selectedRoute) return;
+          const status = (bus.status || "").trim();
+          const note = (bus.note || "").trim();
 
-        const status = (bus.status || "").trim();
-        const note = (bus.note || "").trim();
+          if (status.includes("回送") || status.includes("非公開") || note.includes("非公開")) {
+            return;
+          }
 
-        if (status.includes("回送") || status.includes("非公開") || note.includes("非公開")) return;
+          const updatedAt = bus.updated_at ? new Date(bus.updated_at.replace(" ", "T")) : null;
+          if (!updatedAt || isNaN(updatedAt.getTime())) return;
 
-        // ★ 5分更新なしは非表示
-        const updatedAt = bus.updated_at ? new Date(bus.updated_at.replace(" ", "T")) : null;
-        if (!updatedAt || isNaN(updatedAt.getTime())) return;
+          const diffMin = (new Date() - updatedAt) / 1000 / 60;
+          if (diffMin > 5) return;
 
-        const diffMin = (new Date() - updatedAt) / 1000 / 60;
-        if (diffMin > 5) return;
+          const lat = Number(bus.lat);
+          const lng = Number(bus.lng);
 
-        const lat = Number(bus.lat);
-        const lng = Number(bus.lng);
-        if (!lat || !lng) return;
+          if (Number.isNaN(lat) || Number.isNaN(lng) || lat === 0 || lng === 0) return;
 
-        const id = bus.bus_id || "";
-        activeIds.add(id);
-        count++;
+          const id = bus.bus_id || "";
+          activeIds.add(id);
+          count++;
 
-        if (!markers[id]) {
-          markers[id] = L.marker([lat, lng], { icon: createBusIcon() }).addTo(map);
-        } else {
-          markers[id].setLatLng([lat, lng]);
-        }
+          if (!markers[id]) {
+            markers[id] = L.marker([lat, lng], { icon: createBusIcon() }).addTo(map);
+          } else {
+            markers[id].setLatLng([lat, lng]);
+          }
 
-        markers[id].bindPopup(
-          `<b>${bus.route_name}</b><br>バス:${id}<br>状態:${bus.status}`
-        );
-      });
+          markers[id].bindPopup(
+            `<b>${bus.route_name || ""}</b><br>` +
+            `バス: ${id}<br>` +
+            `状態: ${bus.status || ""}<br>` +
+            `更新: ${bus.updated_at || ""}`
+          );
+        });
 
-      Object.keys(markers).forEach(id => {
-        if (!activeIds.has(id)) {
-          map.removeLayer(markers[id]);
-          delete markers[id];
-        }
-      });
+        Object.keys(markers).forEach(id => {
+          if (!activeIds.has(id)) {
+            map.removeLayer(markers[id]);
+            delete markers[id];
+          }
+        });
 
-      document.getElementById("status").textContent =
-        `${selectedRoute} / ${count}台 / ${new Date().toLocaleTimeString()}`;
+        document.getElementById("status").textContent =
+          `${selectedRoute} / ${count}台 / ${new Date().toLocaleTimeString("ja-JP")}`;
+      } catch (e) {
+        console.error("bus load error", e);
+        document.getElementById("status").textContent = "読み込みに失敗しました";
+      }
     }
 
     async function changeRoute() {
       const route = document.getElementById("routeSelector").value;
       await loadRoute(route);
+      await loadStops(route);
       await loadBus();
     }
 
     document.getElementById("routeSelector").addEventListener("change", changeRoute);
 
     changeRoute();
+
+    setTimeout(() => {
+      showUserLocation(false);
+    }, 1000);
+
     setInterval(loadBus, 15000);
   </script>
 </body>
