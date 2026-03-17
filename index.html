@@ -5,48 +5,49 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>送迎バス位置</title>
 
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <style>
-  .route-bar {
-  padding: 10px 16px;
-  background: #ffffff;
-  border-bottom: 1px solid #ddd;
-  font-size: 14px;
-}
+    .route-bar {
+      padding: 10px 16px;
+      background: #ffffff;
+      border-bottom: 1px solid #ddd;
+      font-size: 14px;
+    }
 
-.route-bar label {
-  margin-right: 8px;
-  font-weight: bold;
-}
+    .route-bar label {
+      margin-right: 8px;
+      font-weight: bold;
+    }
 
-.route-bar select {
-  padding: 8px 10px;
-  font-size: 14px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  background: #fff;
-}    .bus-icon {
-  background: transparent;
-  border: none;
-}
+    .route-bar select {
+      padding: 8px 10px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: #fff;
+    }
 
-.bus-icon div {
-  font-size: 95px;
-  width: 120px;
-  height: 120px;
-  line-height: 120px;
-  text-align: center;
-  text-shadow:
-    -3px -3px 0 #fff,
-     3px -3px 0 #fff,
-    -3px  3px 0 #fff,
-     3px  3px 0 #fff,
-     0px  0px 6px rgba(0,0,0,0.35);
-}    html, body {
+    .bus-icon {
+      background: transparent;
+      border: none;
+    }
+
+    .bus-icon div {
+      font-size: 95px;
+      width: 120px;
+      height: 120px;
+      line-height: 120px;
+      text-align: center;
+      text-shadow:
+        -3px -3px 0 #fff,
+         3px -3px 0 #fff,
+        -3px  3px 0 #fff,
+         3px  3px 0 #fff,
+         0px  0px 6px rgba(0,0,0,0.35);
+    }
+
+    html, body {
       margin: 0;
       padding: 0;
       height: 100%;
@@ -72,155 +73,159 @@
 
     #map {
       width: 100%;
-      height: calc(100% - 96px);
+      height: calc(100% - 140px);
     }
   </style>
 </head>
 <body>
   <div class="header">送迎バス位置</div>
   <div class="info" id="status">読み込み中...</div>
+
   <div class="route-bar">
-  <label for="routeSelector">送迎ルート：</label>
-  <select id="routeSelector">
-    <option value="鴨志田">鴨志田</option>
-    <option value="たまプラ">たまプラ</option>
-    <option value="ニュータウン">ニュータウン</option>
-    <option value="十日市場">十日市場</option>
-    <option value="成瀬">成瀬</option>
-  </select>
-</div>  <div id="map"></div>
+    <label for="routeSelector">送迎ルート：</label>
+    <select id="routeSelector">
+      <option value="鴨志田">鴨志田</option>
+      <option value="たまプラ">たまプラ</option>
+      <option value="ニュータウン">ニュータウン</option>
+      <option value="十日市場">十日市場</option>
+      <option value="成瀬">成瀬</option>
+    </select>
+  </div>
+
+  <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
- <script>
-  const GAS_BASE_URL = "https://script.google.com/macros/s/AKfycbxzzWoKWCjjK6GFpaJvgmIOOEmBBQOGcOBvcjhDlL0LHKVjBBcyt6KDFIrHKquetnJ7/exec";
+  <script>
+    const GAS_BASE_URL = "https://script.google.com/macros/s/AKfycbxzzWoKWCjjK6GFpaJvgmIOOEmBBQOGcOBvcjhDlL0LHKVjBBcyt6KDFIrHKquetnJ7/exec";
 
-  const map = L.map("map").setView([35.5457, 139.5331], 13);
+    const map = L.map("map").setView([35.5457, 139.5331], 13);
 
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: "&copy; OpenStreetMap contributors"
-  }).addTo(map);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(map);
 
-  const markers = {};
-  let routeLine = null;
+    const markers = {};
+    let routeLine = null;
 
-  function createBusIcon() {
-    return L.divIcon({
-      className: "bus-icon",
-      html: "<div>🚌</div>",
-      iconSize: [120, 120],
-      iconAnchor: [60, 60]
-    });
-  }
-
-  function getRouteColor(routeName) {
-    if (routeName === "鴨志田") return "#e53935";
-    if (routeName === "たまプラ") return "#1e88e5";
-    if (routeName === "ニュータウン") return "#43a047";
-    if (routeName === "十日市場") return "#fb8c00";
-    if (routeName === "成瀬") return "#8e24aa";
-    return "#1565c0";
-  }
-
-  async function loadRoute(routeName) {
-    try {
-      const res = await fetch(
-        `${GAS_BASE_URL}?action=getRoutePath&routeName=${encodeURIComponent(routeName)}`
-      );
-      const path = await res.json();
-
-      if (routeLine) {
-        map.removeLayer(routeLine);
-        routeLine = null;
-      }
-
-      if (Array.isArray(path) && path.length > 0) {
-        routeLine = L.polyline(path, {
-          color: getRouteColor(routeName),
-          weight: 6,
-          opacity: 0.9
-        }).addTo(map);
-
-        map.fitBounds(routeLine.getBounds(), { padding: [20, 20] });
-      }
-    } catch (error) {
-      console.error("route load error", error);
+    function createBusIcon() {
+      return L.divIcon({
+        className: "bus-icon",
+        html: "<div>🚌</div>",
+        iconSize: [120, 120],
+        iconAnchor: [60, 60]
+      });
     }
-  }
 
-  async function loadBus() {
-    try {
-      const selectedRoute = document.getElementById("routeSelector").value;
-      const res = await fetch(`${GAS_BASE_URL}?action=getLocations`);
-      const buses = await res.json();
+    function getRouteColor(routeName) {
+      if (routeName === "鴨志田") return "#e53935";
+      if (routeName === "たまプラ") return "#1e88e5";
+      if (routeName === "ニュータウン") return "#43a047";
+      if (routeName === "十日市場") return "#fb8c00";
+      if (routeName === "成瀬") return "#8e24aa";
+      return "#1565c0";
+    }
 
-      if (!Array.isArray(buses) || buses.length === 0) {
-        document.getElementById("status").textContent = "バスデータがありません";
-        return;
+    async function loadRoute(routeName) {
+      try {
+        const res = await fetch(
+          `${GAS_BASE_URL}?action=getRoutePath&routeName=${encodeURIComponent(routeName)}`
+        );
+        const path = await res.json();
+
+        if (routeLine) {
+          map.removeLayer(routeLine);
+          routeLine = null;
+        }
+
+        if (Array.isArray(path) && path.length > 0) {
+          routeLine = L.polyline(path, {
+            color: getRouteColor(routeName),
+            weight: 6,
+            opacity: 0.9
+          }).addTo(map);
+
+          map.fitBounds(routeLine.getBounds(), { padding: [20, 20] });
+        }
+      } catch (error) {
+        console.error("route load error", error);
       }
+    }
 
-      let visibleCount = 0;
-      const activeIds = new Set();
+    async function loadBus() {
+      try {
+        const selectedRoute = document.getElementById("routeSelector").value;
+        const res = await fetch(`${GAS_BASE_URL}?action=getLocations`);
+        const buses = await res.json();
 
-      buses.forEach((bus) => {
-        if ((bus.route_name || "") !== selectedRoute) return;
-
-        const lat = Number(bus.lat);
-        const lng = Number(bus.lng);
-
-        if (Number.isNaN(lat) || Number.isNaN(lng) || lat === 0 || lng === 0) {
+        if (!Array.isArray(buses) || buses.length === 0) {
+          document.getElementById("status").textContent = "バスデータがありません";
           return;
         }
 
-        const id = bus.bus_id || "";
-        const routeName = bus.route_name || "";
-        const busStatus = bus.status || "";
-        const updatedAt = bus.updated_at || "";
-        const note = bus.note || "";
+        let visibleCount = 0;
+        const activeIds = new Set();
 
-        visibleCount++;
-        activeIds.add(id);
+        buses.forEach((bus) => {
+          if ((bus.route_name || "") !== selectedRoute) return;
 
-        const popupHtml =
-          `<b>${routeName}</b><br>` +
-          `バス: ${id}<br>` +
-          `状態: ${busStatus}<br>` +
-          `更新: ${updatedAt}` +
-          (note ? `<br>備考: ${note}` : "");
+          const lat = Number(bus.lat);
+          const lng = Number(bus.lng);
 
-        if (!markers[id]) {
-          markers[id] = L.marker([lat, lng], { icon: createBusIcon() }).addTo(map);
-        } else {
-          markers[id].setLatLng([lat, lng]);
-          markers[id].setIcon(createBusIcon());
-        }
+          if (Number.isNaN(lat) || Number.isNaN(lng) || lat === 0 || lng === 0) {
+            return;
+          }
 
-        markers[id].bindPopup(popupHtml);
-      });
+          const id = bus.bus_id || "";
+          const routeName = bus.route_name || "";
+          const busStatus = bus.status || "";
+          const updatedAt = bus.updated_at || "";
+          const note = bus.note || "";
 
-      Object.keys(markers).forEach((id) => {
-        if (!activeIds.has(id)) {
-          map.removeLayer(markers[id]);
-          delete markers[id];
-        }
-      });
+          visibleCount++;
+          activeIds.add(id);
 
-      document.getElementById("status").textContent =
-        `${selectedRoute} / 表示中：${visibleCount}台 / 最終更新: ${new Date().toLocaleTimeString("ja-JP")}`;
-    } catch (error) {
-      console.error(error);
-      document.getElementById("status").textContent = "読み込みに失敗しました";
+          const popupHtml =
+            `<b>${routeName}</b><br>` +
+            `バス: ${id}<br>` +
+            `状態: ${busStatus}<br>` +
+            `更新: ${updatedAt}` +
+            (note ? `<br>備考: ${note}` : "");
+
+          if (!markers[id]) {
+            markers[id] = L.marker([lat, lng], { icon: createBusIcon() }).addTo(map);
+          } else {
+            markers[id].setLatLng([lat, lng]);
+            markers[id].setIcon(createBusIcon());
+          }
+
+          markers[id].bindPopup(popupHtml);
+        });
+
+        Object.keys(markers).forEach((id) => {
+          if (!activeIds.has(id)) {
+            map.removeLayer(markers[id]);
+            delete markers[id];
+          }
+        });
+
+        document.getElementById("status").textContent =
+          `${selectedRoute} / 表示中：${visibleCount}台 / 最終更新: ${new Date().toLocaleTimeString("ja-JP")}`;
+      } catch (error) {
+        console.error(error);
+        document.getElementById("status").textContent = "読み込みに失敗しました";
+      }
     }
-  }
 
-  async function changeRoute() {
-    const routeName = document.getElementById("routeSelector").value;
-    await loadRoute(routeName);
-    await loadBus();
-  }
+    async function changeRoute() {
+      const routeName = document.getElementById("routeSelector").value;
+      await loadRoute(routeName);
+      await loadBus();
+    }
 
-  document.getElementById("routeSelector").addEventListener("change", changeRoute);
+    document.getElementById("routeSelector").addEventListener("change", changeRoute);
 
-  changeRoute();
-  setInterval(loadBus, 15000);
-</script></body>
+    changeRoute();
+    setInterval(loadBus, 15000);
+  </script>
+</body>
 </html>
