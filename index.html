@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>送迎バス現在地 TEST123</title>
+  <title>送迎バス現在地</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -17,9 +17,6 @@
       --header: #1f3b57;
       --accent: #1565c0;
       --accent-soft: #e8f4fd;
-      --next-bg: #fff4d6;
-      --next-border: #f3d37a;
-      --notice-bg: #f7f8fa;
       --shadow: 0 4px 14px rgba(0,0,0,0.08);
       --radius: 12px;
     }
@@ -100,101 +97,49 @@
       color: var(--text);
     }
 
-    .current-location-box {
+    .map-wrap {
       position: relative;
-      background: var(--accent-soft);
-      border: 1px solid #d7e9fb;
-      min-height: 84px;
-      padding-right: 130px;
+      overflow: hidden;
+      border-radius: 14px;
+      border: 1px solid #e6e9ee;
+      margin-bottom: 12px;
+      background: #e5e7eb;
     }
 
-    .current-location-btn {
+    .map-area {
+      height: 72vh;
+      min-height: 460px;
+      background: #e5e7eb;
+    }
+
+    .map-floating-location-btn {
       position: absolute;
+      top: 12px;
       right: 12px;
-      bottom: 28px;
-      width: auto;
+      z-index: 2000;
       padding: 10px 14px;
       font-size: 14px;
       font-weight: 700;
       border: none;
       border-radius: 999px;
-      background: var(--accent);
+      background: rgba(21, 101, 192, 0.96);
       color: #fff;
-      z-index: 2000;
-      cursor: pointer;
       box-shadow: 0 4px 10px rgba(0,0,0,0.18);
+      cursor: pointer;
     }
 
     .current-location-status {
-      margin-top: 8px;
+      margin-top: 0;
       font-size: 13px;
       color: #35516c;
       line-height: 1.5;
     }
 
-    .map-wrap {
-      overflow: hidden;
-      border-radius: 14px;
-      border: 1px solid #e6e9ee;
-      margin-bottom: 12px;
-    }
-
-    .map-area {
-      height: 68vh;
-      min-height: 420px;
-      background: #e5e7eb;
-    }
-
     .version {
-      margin-bottom: 12px;
+      margin-bottom: 0;
       font-size: 12px;
       color: #b91c1c;
       font-weight: 700;
-    }
-
-    .next-stop-box {
-      background: var(--next-bg);
-      border: 1px solid var(--next-border);
-      border-radius: 14px;
-      padding: 14px;
-      margin-bottom: 12px;
-    }
-
-    .next-stop-label {
-      font-size: 13px;
-      font-weight: 700;
-      color: #8a6700;
-      margin-bottom: 6px;
-    }
-
-    .next-stop-name {
-      font-size: 24px;
-      font-weight: 800;
-      line-height: 1.2;
-      margin-bottom: 4px;
-    }
-
-    .next-stop-time {
-      font-size: 16px;
-      font-weight: 700;
-      color: #5f4a00;
-    }
-
-    .notice-box {
-      background: var(--notice-bg);
-      border: 1px solid #eceff3;
-      border-radius: 12px;
-      padding: 12px;
-      line-height: 1.7;
-      font-size: 13px;
-      color: #4b5563;
-    }
-
-    .notice-title {
-      font-weight: 700;
-      font-size: 13px;
-      color: #374151;
-      margin-bottom: 6px;
     }
 
     .error {
@@ -274,51 +219,24 @@
         border-radius: 8px;
       }
 
-      .current-location-box {
-        min-height: 78px;
-        padding-right: 110px;
-      }
-
-      .current-location-btn {
+      .map-floating-location-btn {
+        top: 10px;
         right: 10px;
-        bottom: 32px;
+        padding: 9px 12px;
         font-size: 13px;
-        padding: 8px 12px;
       }
 
       .current-location-status {
-        margin-top: 6px;
         font-size: 12px;
       }
 
       .map-area {
-        height: 72vh;
-        min-height: 360px;
+        height: 74vh;
+        min-height: 400px;
       }
 
       .version {
-        margin-bottom: 8px;
         font-size: 11px;
-      }
-
-      .next-stop-box {
-        padding: 12px;
-        margin-bottom: 8px;
-        border-radius: 12px;
-      }
-
-      .next-stop-name {
-        font-size: 21px;
-      }
-
-      .next-stop-time {
-        font-size: 15px;
-      }
-
-      .notice-box {
-        padding: 10px;
-        font-size: 12px;
-        line-height: 1.6;
       }
 
       .bus-icon div {
@@ -356,32 +274,20 @@
         </select>
       </div>
 
-      <div class="section current-location-box">
-        <div class="section-title">あなたの現在地</div>
-        <button type="button" class="current-location-btn" onclick="showUserLocation(true)">
-          現在地を再表示
-        </button>
-        <div id="currentLocationStatus" class="current-location-status">
+      <div class="section">
+        <div class="current-location-status" id="currentLocationStatus">
           現在地を確認中...
         </div>
       </div>
 
       <div class="map-wrap">
+        <button type="button" class="map-floating-location-btn" onclick="showUserLocation(true)">
+          現在地
+        </button>
         <div id="map" class="map-area"></div>
       </div>
 
       <div class="version">軽量版 / GitHub公開用</div>
-
-      <div id="nextStopInfo" class="next-stop-box">
-        <div class="next-stop-label">次の停留所</div>
-        <div class="next-stop-name">計算中...</div>
-        <div class="next-stop-time"></div>
-      </div>
-
-      <div class="notice-box" id="noticeBox">
-        <div class="notice-title">お知らせ</div>
-        <div>・到着時刻は交通状況により前後する場合があります</div>
-      </div>
 
     </div>
   </div>
@@ -416,11 +322,6 @@
       return R * c;
     }
 
-    function estimateMinutesByDistance(km) {
-      const avgSpeedKmH = 20;
-      return Math.max(1, Math.round((km / avgSpeedKmH) * 60));
-    }
-
     function shouldHideBus(bus) {
       const note = (bus.note || '').trim();
       const status = (bus.status || '').trim();
@@ -444,51 +345,6 @@
       if (routeName === '十日市場') return { main: '#fb8c00', dark: '#e65100' };
       if (routeName === '成瀬') return { main: '#8e24aa', dark: '#4a148c' };
       return { main: '#1e88e5', dark: '#0d47a1' };
-    }
-
-    function findCurrentAndNextStop(bus, stops) {
-      if (!bus || !stops || stops.length === 0) return null;
-
-      const sortedStops = stops.slice().sort((a, b) => Number(a.stop_order) - Number(b.stop_order));
-
-      let nearestIndex = -1;
-      let minDistance = Infinity;
-
-      sortedStops.forEach((stop, index) => {
-        if (!isNaN(stop.lat) && !isNaN(stop.lng)) {
-          const distanceKm = calcDistanceKm(
-            Number(bus.lat),
-            Number(bus.lng),
-            Number(stop.lat),
-            Number(stop.lng)
-          );
-
-          if (distanceKm < minDistance) {
-            minDistance = distanceKm;
-            nearestIndex = index;
-          }
-        }
-      });
-
-      if (nearestIndex === -1) return null;
-
-      const currentStop = sortedStops[nearestIndex];
-      let nextIndex = nearestIndex + 1;
-      if (nextIndex >= sortedStops.length) nextIndex = 0;
-
-      const nextStop = sortedStops[nextIndex];
-      const nextDistanceKm = calcDistanceKm(
-        Number(bus.lat),
-        Number(bus.lng),
-        Number(nextStop.lat),
-        Number(nextStop.lng)
-      );
-
-      return {
-        currentStop,
-        nextStop,
-        etaMin: estimateMinutesByDistance(nextDistanceKm)
-      };
     }
 
     async function fetchJson(apiName, routeName = '') {
@@ -553,33 +409,6 @@
           if (map.hasLayer(layer)) map.removeLayer(layer);
         }
       });
-    }
-
-    function renderNextStopInfo(bus, stops) {
-      const box = document.getElementById('nextStopInfo');
-
-      if (!bus || !stops || stops.length === 0) {
-        box.innerHTML =
-          '<div class="next-stop-label">次の停留所</div>' +
-          '<div class="next-stop-name">表示できません</div>' +
-          '<div class="next-stop-time"></div>';
-        return;
-      }
-
-      const stopInfo = findCurrentAndNextStop(bus, stops);
-
-      if (!stopInfo) {
-        box.innerHTML =
-          '<div class="next-stop-label">次の停留所</div>' +
-          '<div class="next-stop-name">判定できません</div>' +
-          '<div class="next-stop-time"></div>';
-        return;
-      }
-
-      box.innerHTML =
-        '<div class="next-stop-label">次の停留所</div>' +
-        '<div class="next-stop-name">' + (stopInfo.nextStop.stop_name || '') + '</div>' +
-        '<div class="next-stop-time">あと 約' + stopInfo.etaMin + '分</div>';
     }
 
     function renderBusMarkers() {
@@ -669,26 +498,6 @@
       );
     }
 
-    async function loadNotices() {
-      try {
-        const notices = await fetchJson('notices');
-        const box = document.getElementById('noticeBox');
-
-        if (!notices || notices.length === 0) {
-          box.innerHTML =
-            '<div class="notice-title">お知らせ</div>' +
-            '<div>・到着時刻は交通状況により前後する場合があります</div>';
-          return;
-        }
-
-        box.innerHTML =
-          '<div class="notice-title">お知らせ</div>' +
-          notices.map(n => '<div>・' + n + '</div>').join('');
-      } catch (e) {
-        // 固定文のまま
-      }
-    }
-
     async function loadRouteLayers(routeName) {
       clearBaseLayers();
       stopCache = [];
@@ -729,23 +538,14 @@
         if (stopCache.length > 0) {
           stopCache.forEach(stop => {
             if (!isNaN(stop.lat) && !isNaN(stop.lng)) {
-              let isNextStop = false;
-
-              if (currentVisibleBuses.length > 0) {
-                const nextInfo = findCurrentAndNextStop(currentVisibleBuses[0], stopCache);
-                if (nextInfo && nextInfo.nextStop.stop_name === stop.stop_name) {
-                  isNextStop = true;
-                }
-              }
-
               const routeColors = getRouteColor(currentRouteName);
 
               const stopMarker = L.circleMarker([stop.lat, stop.lng], {
-                radius: isNextStop ? 16 : 10,
-                color: isNextStop ? '#e65100' : routeColors.dark,
-                fillColor: isNextStop ? '#ff9800' : routeColors.main,
-                fillOpacity: isNextStop ? 1 : 0.85,
-                weight: isNextStop ? 4 : 3
+                radius: 10,
+                color: routeColors.dark,
+                fillColor: routeColors.main,
+                fillOpacity: 0.85,
+                weight: 3
               }).bindPopup(
                 '<b>' + (stop.stop_name || '') + '</b><br>' +
                 '順番: ' + (stop.stop_order || '') + '<br>' +
@@ -769,17 +569,8 @@
         }
 
         updateStopLabelVisibility();
-
-        if (currentVisibleBuses.length > 0) {
-          renderNextStopInfo(currentVisibleBuses[0], stopCache);
-        } else {
-          renderNextStopInfo(null, null);
-        }
       } catch (e) {
-        document.getElementById('nextStopInfo').innerHTML =
-          '<div class="next-stop-label">次の停留所</div>' +
-          '<div class="next-stop-name error">ルート読込エラー</div>' +
-          '<div class="next-stop-time"></div>';
+        console.error(e);
       }
     }
 
@@ -801,27 +592,19 @@
         }
 
         renderBusMarkers();
-
-        if (stopCache.length > 0 && currentVisibleBuses.length > 0) {
-          renderNextStopInfo(currentVisibleBuses[0], stopCache);
-        } else if (currentVisibleBuses.length === 0) {
-          renderNextStopInfo(null, null);
-        }
       } catch (e) {
-        document.getElementById('nextStopInfo').innerHTML =
-          '<div class="next-stop-label">次の停留所</div>' +
-          '<div class="next-stop-name error">データ取得エラー</div>' +
-          '<div class="next-stop-time"></div>';
+        console.error(e);
       }
     }
 
-    async function changeRoute() {
+    function changeRoute() {
       currentRouteName = document.getElementById('routeSelector').value;
       currentVisibleBuses = [];
       stopCache = [];
       clearBusLayers();
-      await loadBusData();
-      await loadRouteLayers(currentRouteName);
+
+      loadBusData();
+      loadRouteLayers(currentRouteName);
     }
 
     window.addEventListener('load', async function() {
@@ -830,7 +613,6 @@
 
       loadBusData();
       loadRouteLayers(currentRouteName);
-      await loadNotices();
 
       document.getElementById('routeSelector').addEventListener('change', function() {
         changeRoute();
