@@ -57,10 +57,10 @@
     }
 
     .bus-icon div {
-      font-size: 70px;
-      width: 90px;
-      height: 90px;
-      line-height: 90px;
+      font-size: 60px;
+      width: 75px;
+      height: 75px;
+      line-height: 75px;
       text-align: center;
       text-shadow:
         -3px -3px 0 #fff,
@@ -190,8 +190,8 @@
       return L.divIcon({
         className: "bus-icon",
         html: "<div>🚌</div>",
-        iconSize: [90, 90],
-        iconAnchor: [45, 45]
+        iconSize: [75, 75],
+        iconAnchor: [37, 37]
       });
     }
 
@@ -368,6 +368,18 @@
             return;
           }
 
+          const updatedAt = bus.updated_at ? new Date(bus.updated_at.replace(" ", "T")) : null;
+const now = new Date();
+
+if (!updatedAt || isNaN(updatedAt.getTime())) {
+  return;
+}
+
+const diffMin = (now - updatedAt) / 1000 / 60;
+
+if (diffMin > 5) {
+  return;
+}
           const lat = Number(bus.lat);
           const lng = Number(bus.lng);
 
