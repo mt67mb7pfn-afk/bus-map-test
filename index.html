@@ -243,7 +243,12 @@
         buses.forEach((bus) => {
           if ((bus.route_name || "") !== selectedRoute) return;
 
-          const lat = Number(bus.lat);
+          const status = (bus.status || "").trim();
+const note = (bus.note || "").trim();
+
+if (status === "回送" || status === "非公開" || note.includes("非公開")) {
+  return;
+}          const lat = Number(bus.lat);
           const lng = Number(bus.lng);
           if (Number.isNaN(lat) || Number.isNaN(lng) || lat === 0 || lng === 0) return;
 
