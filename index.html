@@ -291,7 +291,8 @@
     let userLocationLayer = null;
     let userAccuracyLayer = null;
     let hasAutoCenteredUser = false;
-
+    let routeDataCache = {};
+    
     function calcDistanceKm(lat1, lng1, lat2, lng2) {
       const R = 6371;
       const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -546,91 +547,134 @@
       );
     }
 
-    async function loadRouteLayers(routeName) {
-      clearBaseLayers();
-      stopCache = [];
+    
+// ----------------------------
+function drawRouteLayers(routeName, pathData, restrictedPath, stops) {
+  if (pathData && pathData.length > 0) {
+    const routeColors = getRouteColor(routeName);
 
-      try {
-        const [pathData, restrictedPath, stops] = await Promise.all([
-          fetchJson('routePath', routeName),
-          fetchJson('restrictedPath', routeName),
-          fetchJson('stops', routeName)
-        ]);
+    const routeLine = L.polyline(pathData, {
+      color: routeColors.main,
+      weight: 6,
+      opacity: 1
+    });
 
-        if (pathData && pathData.length > 0) {
-          const routeColors = getRouteColor(routeName);
+    addBaseLayer(routeLine);
+    map.fitBounds(pathData);
+  }
 
-          const routeLine = L.polyline(pathData, {
-            color: routeColors.main,
-            weight: 6,
-            opacity: 1
-          });
+  drawRestrictedAndStops(routeName, restrictedPath, stops);
+}
 
-          addBaseLayer(routeLine);
-          map.fitBounds(pathData);
+// ----------------------------
+function drawRestrictedAndStops(routeName, restrictedPath, stops) {
+  if (restrictedPath && restrictedPath.length > 0) {
+    const restrictedLine = L.polyline(restrictedPath, {
+      color: '#444',
+      weight: 5,
+      opacity: 1,
+      dashArray: '10,10'
+    });
+
+    addBaseLayer(restrictedLine);
+  }
+
+  stopCache = stops || [];
+
+  if (stopCache.length > 0) {
+    stopCache.forEach(stop => {
+      if (!isNaN(stop.lat) && !isNaN(stop.lng)) {
+        let isNextStop = false;
+
+        if (currentVisibleBuses.length > 0) {
+          const nextInfo = findCurrentAndNextStop(currentVisibleBuses[0], stopCache);
+          if (nextInfo && nextInfo.nextStop.stop_name === stop.stop_name) {
+            isNextStop = true;
+          }
         }
 
-        if (restrictedPath && restrictedPath.length > 0) {
-          const restrictedLine = L.polyline(restrictedPath, {
-            color: '#444',
-            weight: 5,
-            opacity: 1,
-            dashArray: '10,10'
-          });
+        const routeColors = getRouteColor(currentRouteName);
 
-          addBaseLayer(restrictedLine);
-        }
+        const stopMarker = L.circleMarker([stop.lat, stop.lng], {
+          radius: isNextStop ? 16 : 10,
+          color: isNextStop ? '#e65100' : routeColors.dark,
+          fillColor: isNextStop ? '#ff9800' : routeColors.main,
+          fillOpacity: isNextStop ? 1 : 0.85,
+          weight: isNextStop ? 4 : 3
+        }).bindPopup(
+          '<b>' + (stop.stop_name || '') + '</b><br>' +
+          '順番: ' + (stop.stop_order || '') + '<br>' +
+          '備考: ' + (stop.note || '')
+        );
 
-        stopCache = stops || [];
+        addBaseLayer(stopMarker);
 
-        if (stopCache.length > 0) {
-          stopCache.forEach(stop => {
-            if (!isNaN(stop.lat) && !isNaN(stop.lng)) {
-              let isNextStop = false;
+        const stopLabel = L.marker([stop.lat, stop.lng], {
+          icon: L.divIcon({
+            className: 'stop-label',
+            html: '<div>' + (stop.stop_name || '') + '</div>',
+            iconSize: [120, 20],
+            iconAnchor: [-8, 10]
+          })
+        });
 
-              if (currentVisibleBuses.length > 0) {
-                const nextInfo = findCurrentAndNextStop(currentVisibleBuses[0], stopCache);
-                if (nextInfo && nextInfo.nextStop.stop_name === stop.stop_name) {
-                  isNextStop = true;
-                }
-              }
-
-              const routeColors = getRouteColor(currentRouteName);
-
-              const stopMarker = L.circleMarker([stop.lat, stop.lng], {
-                radius: isNextStop ? 16 : 10,
-                color: isNextStop ? '#e65100' : routeColors.dark,
-                fillColor: isNextStop ? '#ff9800' : routeColors.main,
-                fillOpacity: isNextStop ? 1 : 0.85,
-                weight: isNextStop ? 4 : 3
-              }).bindPopup(
-                '<b>' + (stop.stop_name || '') + '</b><br>' +
-                '順番: ' + (stop.stop_order || '') + '<br>' +
-                '備考: ' + (stop.note || '')
-              );
-
-              addBaseLayer(stopMarker);
-
-              const stopLabel = L.marker([stop.lat, stop.lng], {
-                icon: L.divIcon({
-                  className: 'stop-label',
-                  html: '<div>' + (stop.stop_name || '') + '</div>',
-                  iconSize: [120, 20],
-                  iconAnchor: [-8, 10]
-                })
-              });
-
-              addStopLabelLayer(stopLabel);
-            }
-          });
-        }
-
-        updateStopLabelVisibility();
-      } catch (e) {
-        console.error(e);
+        addStopLabelLayer(stopLabel);
       }
+    });
+  }
+
+  updateStopLabelVisibility();
+}
+
+// ----------------------------
+async function loadRouteLayers(routeName) {
+  clearBaseLayers();
+  stopCache = [];
+
+  const cached = routeDataCache[routeName];
+
+  if (cached) {
+    drawRouteLayers(routeName, cached.pathData, cached.restrictedPath, cached.stops);
+    return;
+  }
+
+  try {
+    // ① 先にルートだけ描画（高速化）
+    const pathData = await fetchJson('routePath', routeName);
+
+    if (pathData && pathData.length > 0) {
+      const routeColors = getRouteColor(routeName);
+
+      const routeLine = L.polyline(pathData, {
+        color: routeColors.main,
+        weight: 6,
+        opacity: 1
+      });
+
+      addBaseLayer(routeLine);
+      map.fitBounds(pathData);
     }
 
+    // ② あとから残り取得
+    const [restrictedPath, stops] = await Promise.all([
+      fetchJson('restrictedPath', routeName),
+      fetchJson('stops', routeName)
+    ]);
+
+    // ③ キャッシュ
+    routeDataCache[routeName] = {
+      pathData: pathData || [],
+      restrictedPath: restrictedPath || [],
+      stops: stops || []
+    };
+
+    // ④ 描画
+    drawRestrictedAndStops(routeName, restrictedPath, stops);
+
+  } catch (e) {
+    console.error(e);
+  }
+}
     async function loadBusData() {
       initMap();
 
@@ -654,16 +698,17 @@
       }
     }
 
-    function changeRoute() {
-      currentRouteName = document.getElementById('routeSelector').value;
-      currentVisibleBuses = [];
-      stopCache = [];
-      clearBusLayers();
+   function changeRoute() {
+  currentRouteName = document.getElementById('routeSelector').value;
+  currentVisibleBuses = [];
+  stopCache = [];
 
-      loadBusData();
-      loadRouteLayers(currentRouteName);
-    }
+  clearBusLayers();
+  clearBaseLayers();
 
+  loadRouteLayers(currentRouteName);
+  loadBusData();
+}
     window.addEventListener('load', function() {
       initMap();
       currentRouteName = document.getElementById('routeSelector').value;
