@@ -313,21 +313,16 @@
     }
 
     function shouldHideBus(bus) {
-      const note = (bus.note || '').trim();
-      const status = (bus.status || '').trim();
+  const note = (bus.note || '').trim();
+  const status = (bus.status || '').trim();
 
-      if (note.indexOf('非公開') !== -1) return true;
-      if (status.indexOf('非公開') !== -1) return true;
-      if (status.indexOf('回送') !== -1) return true;
-      if (!bus.updated_at) return true;
+  if (note.indexOf('非公開') !== -1) return true;
+  if (status.indexOf('非公開') !== -1) return true;
+  if (status.indexOf('回送') !== -1) return true;
+  if (!bus.updated_at) return true;
 
-      const lastUpdate = new Date(bus.updated_at);
-      const now = new Date();
-      const diffMinutes = (now - lastUpdate) / 1000 / 60;
-
-      return diffMinutes > 5;
-    }
-
+  return false;
+}
     function getRouteColor(routeName) {
       if (routeName === '鴨志田') {
         return { main: '#e53935', dark: '#b71c1c', light: '#ffcdd2' };
