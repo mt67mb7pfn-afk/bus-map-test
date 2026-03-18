@@ -10,13 +10,13 @@
   <style>
     :root {
       --bg: #f3f5f7;
-      --card: #ffffff;
+      --card: rgba(255,255,255,0.96);
       --text: #1f2937;
       --sub: #6b7280;
       --line: #d8dee6;
       --header: #1f3b57;
       --accent: #1565c0;
-      --shadow: 0 4px 14px rgba(0,0,0,0.08);
+      --shadow: 0 4px 14px rgba(0,0,0,0.12);
       --radius: 12px;
     }
 
@@ -27,6 +27,8 @@
     html, body {
       margin: 0;
       padding: 0;
+      width: 100%;
+      height: 100%;
       background: var(--bg);
       color: var(--text);
       font-family: sans-serif;
@@ -34,81 +36,85 @@
     }
 
     body {
-      min-height: 100vh;
+      overflow: hidden;
     }
 
     .header {
       background: var(--header);
       color: #fff;
-      padding: 12px 16px 10px;
+      padding: 10px 14px 8px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      position: relative;
+      z-index: 1000;
     }
 
     .header-title {
-      font-size: 18px;
+      font-size: 17px;
       font-weight: 700;
       line-height: 1.2;
     }
 
     .header-sub {
-      margin-top: 4px;
-      font-size: 12px;
+      margin-top: 3px;
+      font-size: 11px;
       opacity: 0.9;
+      line-height: 1.3;
     }
 
-    .page {
+    .map-page {
+      position: relative;
       width: 100%;
-      max-width: 760px;
-      margin: 0 auto;
-      padding: 12px;
+      height: calc(100vh - 54px);
     }
 
-    .main-card {
+    .map-wrap {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: #e5e7eb;
+    }
+
+    .map-area {
+      width: 100%;
+      height: 100%;
+      background: #e5e7eb;
+    }
+
+    .floating-ui {
+      position: absolute;
+      z-index: 2000;
       background: var(--card);
-      border-radius: 16px;
+      border: 1px solid rgba(220, 226, 234, 0.95);
+      border-radius: 14px;
       box-shadow: var(--shadow);
-      padding: 14px;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
     }
 
-    .section {
-      background: var(--card);
-      border: 1px solid #eef1f4;
-      border-radius: var(--radius);
-      padding: 12px;
-      margin-bottom: 12px;
+    .route-box {
+      top: 12px;
+      left: 12px;
+      padding: 8px 10px;
+      min-width: 170px;
     }
 
-    .section-title {
-      font-size: 13px;
+    .route-label {
+      font-size: 11px;
       font-weight: 700;
       color: var(--sub);
-      margin-bottom: 8px;
+      margin-bottom: 4px;
       letter-spacing: 0.02em;
     }
 
     .selector {
       width: 100%;
-      padding: 12px 14px;
-      font-size: 16px;
+      padding: 8px 10px;
+      font-size: 15px;
       border: 1px solid var(--line);
       border-radius: 10px;
       background: #fff;
       color: var(--text);
-    }
-
-    .map-wrap {
-      position: relative;
-      overflow: hidden;
-      border-radius: 14px;
-      border: 1px solid #e6e9ee;
-      margin-bottom: 12px;
-      background: #e5e7eb;
-    }
-
-    .map-area {
-      height: 100vh;
-      min-height: 500px;
-      background: #e5e7eb;
+      outline: none;
     }
 
     .map-floating-location-btn {
@@ -127,11 +133,20 @@
       cursor: pointer;
     }
 
-    .version {
-      margin-bottom: 0;
-      font-size: 12px;
-      color: #b91c1c;
+    .version-badge {
+      position: absolute;
+      left: 12px;
+      bottom: 12px;
+      z-index: 2000;
+      padding: 6px 10px;
+      font-size: 10px;
       font-weight: 700;
+      color: #6b7280;
+      background: rgba(255,255,255,0.92);
+      border: 1px solid rgba(220, 226, 234, 0.95);
+      border-radius: 999px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      display: none;
     }
 
     .error {
@@ -178,37 +193,36 @@
 
     @media (max-width: 480px) {
       .header {
-        padding: 10px 12px 9px;
+        padding: 9px 12px 7px;
       }
 
       .header-title {
-        font-size: 16px;
+        font-size: 15px;
       }
 
-      .page {
-        padding: 6px;
+      .header-sub {
+        font-size: 10px;
       }
 
-      .main-card {
-        padding: 8px;
-        border-radius: 12px;
+      .map-page {
+        height: calc(100vh - 49px);
       }
 
-      .section {
-        padding: 8px;
-        margin-bottom: 8px;
-        border-radius: 10px;
+      .route-box {
+        top: 10px;
+        left: 10px;
+        min-width: 150px;
+        padding: 7px 8px;
       }
 
-      .section-title {
-        font-size: 12px;
-        margin-bottom: 6px;
+      .route-label {
+        font-size: 10px;
+        margin-bottom: 3px;
       }
 
       .selector {
-        padding: 10px 12px;
-        font-size: 15px;
-        border-radius: 8px;
+        padding: 8px 9px;
+        font-size: 14px;
       }
 
       .map-floating-location-btn {
@@ -216,15 +230,6 @@
         right: 10px;
         padding: 9px 12px;
         font-size: 13px;
-      }
-
-      .map-area {
-        height: 74vh;
-        min-height: 400px;
-      }
-
-      .version {
-        font-size: 11px;
       }
 
       .bus-icon div {
@@ -248,11 +253,10 @@
     <div class="header-sub">地図上で送迎バスの現在位置をご確認いただけます</div>
   </div>
 
-  <div class="page">
-    <div class="main-card">
-
-      <div class="section">
-        <div class="section-title">送迎ルート</div>
+  <div class="map-page">
+    <div class="map-wrap">
+      <div class="floating-ui route-box">
+        <div class="route-label">送迎ルート</div>
         <select id="routeSelector" class="selector">
           <option value="鴨志田">鴨志田</option>
           <option value="たまプラ">たまプラ</option>
@@ -262,13 +266,13 @@
         </select>
       </div>
 
-      <div class="map-wrap">
-        <button type="button" class="map-floating-location-btn" onclick="showUserLocation(true)">
-          現在地
-        </button>
-        <div id="map" class="map-area"></div>
-      </div>
+      <button type="button" class="map-floating-location-btn" onclick="showUserLocation(true)">
+        現在地
+      </button>
 
+      <div class="version-badge">GitHub公開用</div>
+
+      <div id="map" class="map-area"></div>
     </div>
   </div>
 
@@ -302,6 +306,11 @@
       return R * c;
     }
 
+    function estimateMinutesByDistance(km) {
+      const avgSpeedKmH = 20;
+      return Math.max(1, Math.round((km / avgSpeedKmH) * 60));
+    }
+
     function shouldHideBus(bus) {
       const note = (bus.note || '').trim();
       const status = (bus.status || '').trim();
@@ -319,12 +328,75 @@
     }
 
     function getRouteColor(routeName) {
-      if (routeName === '鴨志田') return { main: '#e53935', dark: '#b71c1c' };
-      if (routeName === 'たまプラ') return { main: '#1e88e5', dark: '#0d47a1' };
-      if (routeName === 'ニュータウン') return { main: '#43a047', dark: '#1b5e20' };
-      if (routeName === '十日市場') return { main: '#fb8c00', dark: '#e65100' };
-      if (routeName === '成瀬') return { main: '#8e24aa', dark: '#4a148c' };
-      return { main: '#1e88e5', dark: '#0d47a1' };
+      if (routeName === '鴨志田') {
+        return { main: '#e53935', dark: '#b71c1c', light: '#ffcdd2' };
+      }
+
+      if (routeName === 'たまプラ') {
+        return { main: '#1e88e5', dark: '#0d47a1', light: '#bbdefb' };
+      }
+
+      if (routeName === 'ニュータウン') {
+        return { main: '#43a047', dark: '#1b5e20', light: '#c8e6c9' };
+      }
+
+      if (routeName === '十日市場') {
+        return { main: '#fb8c00', dark: '#e65100', light: '#ffe0b2' };
+      }
+
+      if (routeName === '成瀬') {
+        return { main: '#8e24aa', dark: '#4a148c', light: '#e1bee7' };
+      }
+
+      return { main: '#1e88e5', dark: '#0d47a1', light: '#bbdefb' };
+    }
+
+    function findCurrentAndNextStop(bus, stops) {
+      if (!bus || !stops || stops.length === 0) return null;
+
+      const sortedStops = stops.slice().sort((a, b) => Number(a.stop_order) - Number(b.stop_order));
+
+      let nearestIndex = -1;
+      let minDistance = Infinity;
+
+      sortedStops.forEach((stop, index) => {
+        if (!isNaN(stop.lat) && !isNaN(stop.lng)) {
+          const distanceKm = calcDistanceKm(
+            Number(bus.lat),
+            Number(bus.lng),
+            Number(stop.lat),
+            Number(stop.lng)
+          );
+
+          if (distanceKm < minDistance) {
+            minDistance = distanceKm;
+            nearestIndex = index;
+          }
+        }
+      });
+
+      if (nearestIndex === -1) return null;
+
+      const currentStop = sortedStops[nearestIndex];
+      let nextIndex = nearestIndex + 1;
+
+      if (nextIndex >= sortedStops.length) {
+        nextIndex = 0;
+      }
+
+      const nextStop = sortedStops[nextIndex];
+      const nextDistanceKm = calcDistanceKm(
+        Number(bus.lat),
+        Number(bus.lng),
+        Number(nextStop.lat),
+        Number(nextStop.lng)
+      );
+
+      return {
+        currentStop,
+        nextStop,
+        etaMin: estimateMinutesByDistance(nextDistanceKm)
+      };
     }
 
     async function fetchJson(apiName, routeName = '') {
@@ -384,9 +456,13 @@
 
       stopLabelLayers.forEach(layer => {
         if (zoom >= 15) {
-          if (!map.hasLayer(layer)) map.addLayer(layer);
+          if (!map.hasLayer(layer)) {
+            map.addLayer(layer);
+          }
         } else {
-          if (map.hasLayer(layer)) map.removeLayer(layer);
+          if (map.hasLayer(layer)) {
+            map.removeLayer(layer);
+          }
         }
       });
     }
@@ -510,14 +586,23 @@
         if (stopCache.length > 0) {
           stopCache.forEach(stop => {
             if (!isNaN(stop.lat) && !isNaN(stop.lng)) {
+              let isNextStop = false;
+
+              if (currentVisibleBuses.length > 0) {
+                const nextInfo = findCurrentAndNextStop(currentVisibleBuses[0], stopCache);
+                if (nextInfo && nextInfo.nextStop.stop_name === stop.stop_name) {
+                  isNextStop = true;
+                }
+              }
+
               const routeColors = getRouteColor(currentRouteName);
 
               const stopMarker = L.circleMarker([stop.lat, stop.lng], {
-                radius: 10,
-                color: routeColors.dark,
-                fillColor: routeColors.main,
-                fillOpacity: 0.85,
-                weight: 3
+                radius: isNextStop ? 16 : 10,
+                color: isNextStop ? '#e65100' : routeColors.dark,
+                fillColor: isNextStop ? '#ff9800' : routeColors.main,
+                fillOpacity: isNextStop ? 1 : 0.85,
+                weight: isNextStop ? 4 : 3
               }).bindPopup(
                 '<b>' + (stop.stop_name || '') + '</b><br>' +
                 '順番: ' + (stop.stop_order || '') + '<br>' +
