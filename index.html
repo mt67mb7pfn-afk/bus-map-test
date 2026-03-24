@@ -81,16 +81,16 @@
     }
 
     .floating-ui {
-      position: absolute;
-      z-index: 2000;
-      background: var(--card);
-      border: 1px solid rgba(220, 226, 234, 0.95);
-      border-radius: 14px;
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-    }
+  position: absolute;
+  z-index: 2000;
+  background: var(--card);
+  border: 1px solid rgba(220, 226, 234, 0.95);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
 
+  /* backdrop-filter: blur(6px); */
+  /* -webkit-backdrop-filter: blur(6px); */
+}
     .route-box {
       top: 12px;
       left: 12px;
@@ -111,18 +111,18 @@
   background: rgba(255,255,255,0.75);  /* ←採用 */
 }
     .status-box.normal {
-  background: rgba(255,255,255,0.96);
-  border: 1px solid rgba(220, 226, 234, 0.95);
+  background: rgba(255,255,255,0.75);
+  border: 1px solid rgba(220, 226, 234, 0.6);
 }
 
 .status-box.stop {
-  background: rgba(255,243,224,0.96);
+  background: rgba(255,243,224,0.75);
   border: 1px solid #ffcc80;
   color: #e65100;
 }
 
 .status-box.suspend {
-  background: rgba(255,235,238,0.96);
+  background: rgba(255,235,238,0.75);
   border: 1px solid #ef9a9a;
   color: #c62828;
 }
@@ -472,16 +472,22 @@
       };
     }
 
-    async function fetchJson(apiName, routeName = '') {
-      const url = routeName
-        ? `${API_BASE}?api=${encodeURIComponent(apiName)}&routeName=${encodeURIComponent(routeName)}`
-        : `${API_BASE}?api=${encodeURIComponent(apiName)}`;
+    async function fetchJson(apiName, routeName = '', retry = 2) {
+  const url = routeName
+    ? `${API_BASE}?api=${encodeURIComponent(apiName)}&routeName=${encodeURIComponent(routeName)}`
+    : `${API_BASE}?api=${encodeURIComponent(apiName)}`;
 
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('通信エラー');
-      return await res.json();
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('通信エラー');
+    return await res.json();
+  } catch (e) {
+    if (retry > 0) {
+      return await fetchJson(apiName, routeName, retry - 1);
     }
-
+    throw e;
+  }
+}
     function initMap() {
   if (mapInitialized) return;
 
@@ -740,12 +746,13 @@ async function loadRouteLayers(routeName) {
     ]);
 
     // ③ キャッシュ
-    routeDataCache[routeName] = {
-      pathData: pathData || [],
-      restrictedPath: restrictedPath || [],
-      stops: stops || []
-    };
-
+    if (pathData && pathData.length > 0) {
+  routeDataCache[routeName] = {
+    pathData: pathData || [],
+    restrictedPath: restrictedPath || [],
+    stops: stops || []
+  };
+}
     // ④ 描画
     drawRestrictedAndStops(routeName, restrictedPath, stops);
 
@@ -777,7 +784,7 @@ async function loadRouteLayers(routeName) {
       }
     }
 
-   function changeRoute() {
+   async function changeRoute() {
   currentRouteName = document.getElementById('routeSelector').value;
   currentVisibleBuses = [];
   stopCache = [];
@@ -785,16 +792,13 @@ async function loadRouteLayers(routeName) {
   clearBusLayers();
   clearBaseLayers();
 
-  loadRouteLayers(currentRouteName);
-  loadBusData();
-}
-    window.addEventListener('load', function() {
-      initMap();
+  await loadRouteLayers(currentRouteName);
+  await loadBusData();
+}    window.addEventListener('load', async function() { initMap();
       currentRouteName = document.getElementById('routeSelector').value;
 
-      loadBusData();
-      loadRouteLayers(currentRouteName);
-
+      await loadRouteLayers(currentRouteName);
+await loadBusData();
       document.getElementById('routeSelector').addEventListener('change', function() {
         changeRoute();
       });
