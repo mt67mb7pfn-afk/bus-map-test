@@ -769,7 +769,7 @@ async function loadRouteLayers(routeName) {
         console.error(e);
       }
     }
-function changeRoute() {
+async function changeRoute() {
   currentRouteName = document.getElementById('routeSelector').value;
   currentVisibleBuses = [];
   stopCache = [];
@@ -777,15 +777,17 @@ function changeRoute() {
   clearBusLayers();
   clearBaseLayers();
 
-  loadBusData();                   // 先にバス
-  loadRouteLayers(currentRouteName); // 後でルート
+  map._routeFitted = false;
+
+  await loadRouteLayers(currentRouteName);
+  await loadBusData();
 }
-window.addEventListener('load', function() {
+window.addEventListener('load', async function() {
   initMap();
   currentRouteName = document.getElementById('routeSelector').value;
 
-  loadBusData();
-  loadRouteLayers(currentRouteName);
+  await loadRouteLayers(currentRouteName);
+  await loadBusData();
 
   document.getElementById('routeSelector').addEventListener('change', function() {
     changeRoute();
@@ -798,16 +800,20 @@ window.addEventListener('load', function() {
   setTimeout(function() {
     showUserLocation(false);
   }, 2500);
+let isUpdating = false;
 
-  // ←ここ
-  setInterval(async function() {
-    try {
-      await loadBusData();
-    } catch (e) {
-      console.error(e);
-    }
-  }, 15000);
+setInterval(async function() {
+  if (isUpdating) return;
 
+  isUpdating = true;
+  try {
+    await loadBusData();
+  } catch (e) {
+    console.error(e);
+  } finally {
+    isUpdating = false;
+  }
+}, 15000);  
 });
   </script>
 </body>
