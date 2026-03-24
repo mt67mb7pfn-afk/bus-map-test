@@ -633,20 +633,22 @@
 
     
 // ----------------------------
-function drawRouteLayers(routeName, pathData, restrictedPath, stops) {
-  if (pathData && pathData.length > 0) {
-    const routeColors = getRouteColor(routeName);
+if (pathData && pathData.length > 0) {
+  const routeColors = getRouteColor(routeName);
 
-    const routeLine = L.polyline(pathData, {
-      color: routeColors.main,
-      weight: 6,
-      opacity: 1
-    });
+  const routeLine = L.polyline(pathData, {
+    color: routeColors.main,
+    weight: 6,
+    opacity: 1
+  });
 
-    addBaseLayer(routeLine);
-    map.fitBounds(pathData);
+  addBaseLayer(routeLine);
+
+  if (!map._routeFitted) {
+    map.fitBounds(pathData, { padding: [20, 20] });
+    map._routeFitted = true;
   }
-
+}
   drawRestrictedAndStops(routeName, restrictedPath, stops);
 }
 
