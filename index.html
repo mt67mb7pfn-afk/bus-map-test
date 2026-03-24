@@ -724,10 +724,11 @@ async function loadRouteLayers(routeName) {
   const cached = routeDataCache[routeName];
 
   if (cached) {
-    drawRouteLayers(routeName, cached.pathData, cached.restrictedPath, cached.stops);
-    return;
-  }
+  if (requestId !== currentRouteRequestId) return;
 
+  drawRouteLayers(routeName, cached.pathData, cached.restrictedPath, cached.stops);
+  return;
+}
   try {
     const pathData = await fetchJson('routePath', routeName);
 
