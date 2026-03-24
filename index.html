@@ -321,6 +321,7 @@
     let userAccuracyLayer = null;
     let hasAutoCenteredUser = false;
     let routeDataCache = {};
+    let isChangingRoute = false;
     
     function calcDistanceKm(lat1, lng1, lat2, lng2) {
       const R = 6371;
@@ -770,19 +771,26 @@ async function loadRouteLayers(routeName) {
       }
     }
 async function changeRoute() {
-  currentRouteName = document.getElementById('routeSelector').value;
-  currentVisibleBuses = [];
-  stopCache = [];
+  if (isChangingRoute) return;
+  isChangingRoute = true;
 
-  clearBusLayers();
-  clearBaseLayers();
+  try {
+    currentRouteName = document.getElementById('routeSelector').value;
+    currentVisibleBuses = [];
+    stopCache = [];
 
-  map._routeFitted = false;
+    clearBusLayers();
+    clearBaseLayers();
 
-  await loadRouteLayers(currentRouteName);
-  await loadBusData();
+    map._routeFitted = false;
+
+    await loadRouteLayers(currentRouteName);
+    await loadBusData();
+  } finally {
+    isChangingRoute = false;
+  }
 }
-window.addEventListener('load', async function() {
+    window.addEventListener('load', async function() {
   initMap();
   currentRouteName = document.getElementById('routeSelector').value;
 
