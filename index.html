@@ -632,25 +632,7 @@
     }
 
     
-// ----------------------------
-if (pathData && pathData.length > 0) {
-  const routeColors = getRouteColor(routeName);
 
-  const routeLine = L.polyline(pathData, {
-    color: routeColors.main,
-    weight: 6,
-    opacity: 1
-  });
-
-  addBaseLayer(routeLine);
-
-  if (!map._routeFitted) {
-    map.fitBounds(pathData, { padding: [20, 20] });
-    map._routeFitted = true;
-  }
-}
-  drawRestrictedAndStops(routeName, restrictedPath, stops);
-}
 
 // ----------------------------
 function drawRestrictedAndStops(routeName, restrictedPath, stops) {
@@ -726,21 +708,25 @@ async function loadRouteLayers(routeName) {
 
   try {
     // ① 先にルートだけ描画（高速化）
-    const pathData = await fetchJson('routePath', routeName);
+   const pathData = await fetchJson('routePath', routeName);
 
-    if (pathData && pathData.length > 0) {
-      const routeColors = getRouteColor(routeName);
+if (pathData && pathData.length > 0) {
+  const routeColors = getRouteColor(routeName);
 
-      const routeLine = L.polyline(pathData, {
-        color: routeColors.main,
-        weight: 6,
-        opacity: 1
-      });
+  const routeLine = L.polyline(pathData, {
+    color: routeColors.main,
+    weight: 6,
+    opacity: 1
+  });
 
-      addBaseLayer(routeLine);
-      map.fitBounds(pathData);
-    }
+  addBaseLayer(routeLine);
 
+  // ★ここが今回の改善ポイント
+  if (!map._routeFitted) {
+    map.fitBounds(pathData, { padding: [20, 20] });
+    map._routeFitted = true;
+  }
+}
     // ② あとから残り取得
     const [restrictedPath, stops] = await Promise.all([
       fetchJson('restrictedPath', routeName),
