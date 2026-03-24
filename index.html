@@ -792,8 +792,8 @@ async function changeRoute() {
 
     map._routeFitted = false;
 
-    await loadRouteLayers(currentRouteName);
-    await loadBusData();
+    loadRouteLayers(currentRouteName);
+    loadBusData();
   } finally {
     isChangingRoute = false;
   }
