@@ -693,8 +693,27 @@ function drawRestrictedAndStops(routeName, restrictedPath, stops) {
 
   updateStopLabelVisibility();
 }
+function drawRouteLayers(routeName, pathData, restrictedPath, stops) {
+  if (pathData && pathData.length > 0) {
+    const routeColors = getRouteColor(routeName);
 
-// ----------------------------
+    const routeLine = L.polyline(pathData, {
+      color: routeColors.main,
+      weight: 6,
+      opacity: 1
+    });
+
+    addBaseLayer(routeLine);
+
+    if (!map._routeFitted) {
+      map.fitBounds(pathData, { padding: [20, 20] });
+      map._routeFitted = true;
+    }
+  }
+
+  drawRestrictedAndStops(routeName, restrictedPath, stops);
+}
+    // ----------------------------
 async function loadRouteLayers(routeName) {
   clearBaseLayers();
   stopCache = [];
@@ -707,48 +726,27 @@ async function loadRouteLayers(routeName) {
   }
 
   try {
-    // ① 先にルートだけ描画（高速化）
-   const pathData = await fetchJson('routePath', routeName);
+    const pathData = await fetchJson('routePath', routeName);
 
-if (pathData && pathData.length > 0) {
-  const routeColors = getRouteColor(routeName);
-
-  const routeLine = L.polyline(pathData, {
-    color: routeColors.main,
-    weight: 6,
-    opacity: 1
-  });
-
-  addBaseLayer(routeLine);
-
-  // ★ここが今回の改善ポイント
-  if (!map._routeFitted) {
-    map.fitBounds(pathData, { padding: [20, 20] });
-    map._routeFitted = true;
-  }
-}
-    // ② あとから残り取得
     const [restrictedPath, stops] = await Promise.all([
       fetchJson('restrictedPath', routeName),
       fetchJson('stops', routeName)
     ]);
 
-    // ③ キャッシュ
     if (pathData && pathData.length > 0) {
-  routeDataCache[routeName] = {
-    pathData: pathData || [],
-    restrictedPath: restrictedPath || [],
-    stops: stops || []
-  };
-}
-    // ④ 描画
-    drawRestrictedAndStops(routeName, restrictedPath, stops);
+      routeDataCache[routeName] = {
+        pathData: pathData || [],
+        restrictedPath: restrictedPath || [],
+        stops: stops || []
+      };
+    }
+
+    drawRouteLayers(routeName, pathData, restrictedPath, stops);
 
   } catch (e) {
     console.error(e);
   }
-}
-    async function loadBusData() {
+}    async function loadBusData() {
       initMap();
 
       currentRouteName = document.getElementById('routeSelector').value;
@@ -771,8 +769,7 @@ if (pathData && pathData.length > 0) {
         console.error(e);
       }
     }
-
-   async function changeRoute() {
+function changeRoute() {
   currentRouteName = document.getElementById('routeSelector').value;
   currentVisibleBuses = [];
   stopCache = [];
@@ -780,29 +777,38 @@ if (pathData && pathData.length > 0) {
   clearBusLayers();
   clearBaseLayers();
 
-  await loadRouteLayers(currentRouteName);
-  await loadBusData();
-}    window.addEventListener('load', async function() { initMap();
-      currentRouteName = document.getElementById('routeSelector').value;
+  loadBusData();                   // 先にバス
+  loadRouteLayers(currentRouteName); // 後でルート
+}
+window.addEventListener('load', function() {
+  initMap();
+  currentRouteName = document.getElementById('routeSelector').value;
 
-      await loadRouteLayers(currentRouteName);
-await loadBusData();
-      document.getElementById('routeSelector').addEventListener('change', function() {
-        changeRoute();
-      });
+  loadBusData();
+  loadRouteLayers(currentRouteName);
 
-      map.on('zoomend', function() {
-        updateStopLabelVisibility();
-      });
+  document.getElementById('routeSelector').addEventListener('change', function() {
+    changeRoute();
+  });
 
-      setTimeout(function() {
-        showUserLocation(false);
-      }, 2500);
+  map.on('zoomend', function() {
+    updateStopLabelVisibility();
+  });
 
-      setInterval(function() {
-        loadBusData();
-      }, 15000);
-    });
+  setTimeout(function() {
+    showUserLocation(false);
+  }, 2500);
+
+  // ←ここ
+  setInterval(async function() {
+    try {
+      await loadBusData();
+    } catch (e) {
+      console.error(e);
+    }
+  }, 15000);
+
+});
   </script>
 </body>
 </html>
