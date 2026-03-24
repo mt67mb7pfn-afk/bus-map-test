@@ -310,7 +310,7 @@
 
     let map;
     let mapInitialized = false;
-
+let currentRouteRequestId = 0;
     let baseLayers = [];
     let busLayers = [];
     let stopLabelLayers = [];
@@ -719,6 +719,8 @@ async function loadRouteLayers(routeName) {
   clearBaseLayers();
   stopCache = [];
 
+  const requestId = ++currentRouteRequestId;
+
   const cached = routeDataCache[routeName];
 
   if (cached) {
@@ -729,10 +731,16 @@ async function loadRouteLayers(routeName) {
   try {
     const pathData = await fetchJson('routePath', routeName);
 
+    // ←ここでチェック
+    if (requestId !== currentRouteRequestId) return;
+
     const [restrictedPath, stops] = await Promise.all([
       fetchJson('restrictedPath', routeName),
       fetchJson('stops', routeName)
     ]);
+
+    // ←ここでもチェック
+    if (requestId !== currentRouteRequestId) return;
 
     if (pathData && pathData.length > 0) {
       routeDataCache[routeName] = {
