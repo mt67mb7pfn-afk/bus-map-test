@@ -319,11 +319,11 @@
   if (note.indexOf('非公開') !== -1) return true;
   if (status.indexOf('非公開') !== -1) return true;
   if (status.indexOf('回送') !== -1) return true;
+  if (status.indexOf('運休') !== -1) return true;
   if (!bus.updated_at) return true;
 
   return false;
-}
-    function getRouteColor(routeName) {
+}    function getRouteColor(routeName) {
       if (routeName === '鴨志田') {
         return { main: '#e53935', dark: '#b71c1c', light: '#ffcdd2' };
       }
