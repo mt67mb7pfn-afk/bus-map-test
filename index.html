@@ -97,7 +97,33 @@
       padding: 8px 10px;
       min-width: 170px;
     }
+    .status-box {
+  top: 82px;
+  left: 12px;
+  right: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #263238;
+}
 
+.status-box.normal {
+  background: rgba(255,255,255,0.96);
+  border: 1px solid rgba(220, 226, 234, 0.95);
+}
+
+.status-box.stop {
+  background: rgba(255,243,224,0.96);
+  border: 1px solid #ffcc80;
+  color: #e65100;
+}
+
+.status-box.suspend {
+  background: rgba(255,235,238,0.96);
+  border: 1px solid #ef9a9a;
+  color: #c62828;
+}
     .route-label {
       font-size: 11px;
       font-weight: 700;
@@ -270,6 +296,7 @@
         現在地
       </button>
 
+      <div id="statusBox" class="floating-ui status-box" style="display:none;"></div>
       <div class="version-badge">GitHub公開用</div>
 
       <div id="map" class="map-area"></div>
@@ -323,7 +350,55 @@
   if (!bus.updated_at) return true;
 
   return false;
-}    function getRouteColor(routeName) {
+}
+    function updateStatusBox(allBuses) {
+  const box = document.getElementById('statusBox');
+  if (!box) return;
+
+  const target = (allBuses || []).find(bus => String(bus.route_name) === String(currentRouteName));
+
+  if (!target) {
+    box.style.display = 'none';
+    box.className = 'floating-ui status-box';
+    box.innerHTML = '';
+    return;
+  }
+
+  const status = (target.status || '').trim();
+
+  if (status === '運休') {
+    box.className = 'floating-ui status-box suspend';
+    box.innerHTML = currentRouteName + 'ルートは現在運休中です';
+    box.style.display = 'block';
+    return;
+  }
+
+  if (status === '回送') {
+    box.className = 'floating-ui status-box stop';
+    box.innerHTML = currentRouteName + 'ルートは現在回送中です';
+    box.style.display = 'block';
+    return;
+  }
+
+  if (status === '停車中') {
+    box.className = 'floating-ui status-box stop';
+    box.innerHTML = currentRouteName + 'ルートは現在停車中です';
+    box.style.display = 'block';
+    return;
+  }
+
+  if (status === '運行中') {
+    box.className = 'floating-ui status-box normal';
+    box.innerHTML = currentRouteName + 'ルートは現在運行中です';
+    box.style.display = 'block';
+    return;
+  }
+
+  box.style.display = 'none';
+  box.className = 'floating-ui status-box';
+  box.innerHTML = '';
+} 
+    function getRouteColor(routeName) {
       if (routeName === '鴨志田') {
         return { main: '#e53935', dark: '#b71c1c', light: '#ffcdd2' };
       }
@@ -694,6 +769,7 @@ async function loadRouteLayers(routeName) {
         }
 
         renderBusMarkers();
+        updateStatusBox(data || []);
       } catch (e) {
         console.error(e);
       }
