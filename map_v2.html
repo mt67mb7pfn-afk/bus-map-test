@@ -299,6 +299,7 @@
       </button>
 
       <div id="statusBox" class="floating-ui status-box" style="display:none;"></div>
+      <div id="lastUpdateBox" class="floating-ui status-box normal" style="top: 145px; display:none;"></div>
       <div class="version-badge">GitHub公開用</div>
 
       <div id="map" class="map-area"></div>
@@ -401,6 +402,37 @@ let currentRouteRequestId = 0;
   box.className = 'floating-ui status-box';
   box.innerHTML = '';
 } 
+    function updateLastUpdateTime(allBuses) {
+  const box = document.getElementById('lastUpdateBox');
+  if (!box) return;
+
+  if (!allBuses || allBuses.length === 0) {
+    box.style.display = 'none';
+    return;
+  }
+
+  let latest = null;
+
+  allBuses.forEach(bus => {
+    if (!bus.updated_at) return;
+
+    const date = new Date(bus.updated_at.replace(/-/g, '/'));
+    if (!latest || date > latest) {
+      latest = date;
+    }
+  });
+
+  if (!latest) {
+    box.style.display = 'none';
+    return;
+  }
+
+  const hh = String(latest.getHours()).padStart(2, '0');
+  const mm = String(latest.getMinutes()).padStart(2, '0');
+
+  box.innerHTML = `最終更新：${hh}:${mm}`;
+  box.style.display = 'block';
+}
     function getRouteColor(routeName) {
       if (routeName === '鴨志田') {
         return { main: '#e53935', dark: '#b71c1c', light: '#ffcdd2' };
@@ -783,6 +815,7 @@ async function loadRouteLayers(routeName) {
 
         renderBusMarkers();
         updateStatusBox(data || []);
+        updateLastUpdateTime(data || []);
       } catch (e) {
         console.error(e);
       }
