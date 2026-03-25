@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>送迎バス現在地</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    :root {
+      --bg: #f3f5f7;
+      --card: rgba(255,255,255,0.96);
+      --text: #1f2937;
+      --sub: #6b7280;
+      --line: #d8dee6;
+      --header: #1f3b57;
+      --accent: #1565c0;
+      --shadow: 0 4px 14px rgba(0,0,0,0.12);
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: sans-serif;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      overflow: hidden;
+    }
+
+    .header {
+      background: var(--header);
+      color: #fff;
+      padding: 10px 14px 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      position: relative;
+      z-index: 1000;
+    }
+
+    .header-title {
+      font-size: 17px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .header-sub {
+      margin-top: 3px;
+      font-size: 11px;
+      opacity: 0.9;
+      line-height: 1.3;
+    }
+
+    .map-page {
+      position: relative;
+      width: 100%;
+      height: calc(100vh - 54px);
+    }
+
+    .map-wrap {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: #e5e7eb;
+    }
+
+    .map-area {
+      width: 100%;
+      height: 100%;
+      background: #e5e7eb;
+    }
+
+    .floating-ui {
+  position: absolute;
+  z-index: 2000;
+  background: var(--card);
+  border: 1px solid rgba(220, 226, 234, 0.95);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+
+  /* backdrop-filter: blur(6px); */
+  /* -webkit-backdrop-filter: blur(6px); */
+}
+    .route-box {
+      top: 12px;
+      left: 12px;
+      padding: 8px 10px;
+      min-width: 170px;
+    }
+    .status-box {
+  top: 82px;
+  left: 12px;
+  width: 120px;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #263238;
+
+  background: rgba(255,255,255,0.75);  /* ←採用 */
+}
+    .status-box.normal {
+  background: rgba(255,255,255,0.75);
+  border: 1px solid rgba(220, 226, 234, 0.6);
+}
+
+.status-box.stop {
+  background: rgba(255,243,224,0.75);
+  border: 1px solid #ffcc80;
+  color: #e65100;
+}
+
+.status-box.suspend {
+  background: rgba(255,235,238,0.75);
+  border: 1px solid #ef9a9a;
+  color: #c62828;
+}
+    .route-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--sub);
+      margin-bottom: 4px;
+      letter-spacing: 0.02em;
+    }
+
+    .selector {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 15px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--text);
+      outline: none;
+    }
+
+    .map-floating-location-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 2000;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      border: none;
+      border-radius: 999px;
+      background: rgba(21, 101, 192, 0.96);
+      color: #fff;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.18);
+      cursor: pointer;
+    }
+
+    .version-badge {
+      position: absolute;
+      left: 12px;
+      bottom: 12px;
+      z-index: 2000;
+      padding: 6px 10px;
+      font-size: 10px;
+      font-weight: 700;
+      color: #6b7280;
+      background: rgba(255,255,255,0.92);
+      border: 1px solid rgba(220, 226, 234, 0.95);
+      border-radius: 999px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      display: none;
+    }
+
+    .error {
+      color: #c62828;
+      font-weight: bold;
+    }
+
+    .bus-icon {
+      background: transparent;
+      border: none;
+    }
+
+    .bus-icon div {
+      font-size: 52px;
+      width: 70px;
+      height: 70px;
+      line-height: 70px;
+      text-align: center;
+      text-shadow:
+        -3px -3px 0 #fff,
+         3px -3px 0 #fff,
+        -3px  3px 0 #fff,
+         3px  3px 0 #fff,
+         0px  0px 6px rgba(0,0,0,0.35);
+    }
+
+    .stop-label {
+      background: transparent;
+      border: none;
+    }
+
+    .stop-label div {
+      display: inline-block;
+      background: rgba(255,255,255,0.95);
+      border: 1px solid #d7dde5;
+      border-radius: 8px;
+      padding: 3px 7px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #263238;
+      white-space: nowrap;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    }
+
+    @media (max-width: 480px) {
+      .header {
+        padding: 9px 12px 7px;
+      }
+
+      .header-title {
+        font-size: 15px;
+      }
+
+      .header-sub {
+        font-size: 10px;
+      }
+
+      .map-page {
+        height: calc(100vh - 49px);
+      }
+
+      .route-box {
+        top: 10px;
+        left: 10px;
+        min-width: 150px;
+        padding: 7px 8px;
+      }
+
+      .route-label {
+        font-size: 10px;
+        margin-bottom: 3px;
+      }
+
+      .selector {
+        padding: 8px 9px;
+        font-size: 14px;
+      }
+
+      .map-floating-location-btn {
+        top: 10px;
+        right: 10px;
+        padding: 9px 12px;
+        font-size: 13px;
+      }
+
+      .bus-icon div {
+        font-size: 48px;
+        width: 64px;
+        height: 64px;
+        line-height: 64px;
+      }
+
+      .stop-label div {
+        font-size: 10px;
+        padding: 2px 6px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <div class="header-title">送迎バス現在地</div>
+    <div class="header-sub">地図上で送迎バスの現在位置をご確認いただけます</div>
+  </div>
+
+  <div class="map-page">
+    <div class="map-wrap">
+      <div class="floating-ui route-box">
+        <div class="route-label">送迎ルート</div>
+        <select id="routeSelector" class="selector">
+          <option value="鴨志田">鴨志田</option>
+          <option value="たまプラ">たまプラ</option>
+          <option value="ニュータウン">ニュータウン</option>
+          <option value="十日市場">十日市場</option>
+          <option value="成瀬">成瀬</option>
+        </select>
+      </div>
+
+      <button type="button" class="map-floating-location-btn" onclick="showUserLocation(true)">
+        現在地
+      </button>
+
+      <div id="statusBox" class="floating-ui status-box" style="display:none;"></div>
+      <div class="version-badge">GitHub公開用</div>
+
+      <div id="map" class="map-area"></div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'https://script.google.com/macros/s/AKfycbx3IdwRgyzBTt-_efBSiBNyMwExDcBTwQAHRuX13VS09fj86jiKBjtw2ITVQLcEheU/exec';
+
+    let map;
+    let mapInitialized = false;
+let currentRouteRequestId = 0;
+    let baseLayers = [];
+    let busLayers = [];
+    let stopLabelLayers = [];
+    let stopCache = [];
+    let currentVisibleBuses = [];
+    let currentRouteName = '';
+    let userLocationLayer = null;
+    let userAccuracyLayer = null;
+    let hasAutoCenteredUser = false;
+    let routeDataCache = {};
+    let isChangingRoute = false;
+    
+    function calcDistanceKm(lat1, lng1, lat2, lng2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function estimateMinutesByDistance(km) {
+      const avgSpeedKmH = 20;
+      return Math.max(1, Math.round((km / avgSpeedKmH) * 60));
+    }
+
+    function shouldHideBus(bus) {
+  const note = (bus.note || '').trim();
+  const status = (bus.status || '').trim();
+
+  if (note.indexOf('非公開') !== -1) return true;
+  if (status.indexOf('非公開') !== -1) return true;
+  if (status.indexOf('回送') !== -1) return true;
+  if (status.indexOf('運休') !== -1) return true;
+  if (!bus.updated_at) return true;
+
+  return false;
+}
+    function updateStatusBox(allBuses) {
+  const box = document.getElementById('statusBox');
+  if (!box) return;
+
+  const target = (allBuses || []).find(bus => String(bus.route_name) === String(currentRouteName));
+
+  if (!target) {
+    box.style.display = 'none';
+    box.className = 'floating-ui status-box';
+    box.innerHTML = '';
+    return;
+  }
+
+  const status = (target.status || '').trim();
+
+  if (status === '運休') {
+    box.className = 'floating-ui status-box suspend';
+    box.innerHTML = currentRouteName + 'ルートは現在運休中です';
+    box.style.display = 'block';
+    return;
+  }
+
+  if (status === '回送') {
+    box.className = 'floating-ui status-box stop';
+    box.innerHTML = currentRouteName + 'ルートは現在回送中です';
+    box.style.display = 'block';
+    return;
+  }
+
+  if (status === '停車中') {
+    box.className = 'floating-ui status-box stop';
+    box.innerHTML = currentRouteName + 'ルートは現在停車中です';
+    box.style.display = 'block';
+    return;
+  }
+
+  if (status === '運行中') {
+    box.className = 'floating-ui status-box normal';
+    box.innerHTML = currentRouteName + 'ルートは現在運行中です';
+    box.style.display = 'block';
+    return;
+  }
+
+  box.style.display = 'none';
+  box.className = 'floating-ui status-box';
+  box.innerHTML = '';
+} 
+    function getRouteColor(routeName) {
+      if (routeName === '鴨志田') {
+        return { main: '#e53935', dark: '#b71c1c', light: '#ffcdd2' };
+      }
+
+      if (routeName === 'たまプラ') {
+        return { main: '#1e88e5', dark: '#0d47a1', light: '#bbdefb' };
+      }
+
+      if (routeName === 'ニュータウン') {
+        return { main: '#43a047', dark: '#1b5e20', light: '#c8e6c9' };
+      }
+
+      if (routeName === '十日市場') {
+        return { main: '#fb8c00', dark: '#e65100', light: '#ffe0b2' };
+      }
+
+      if (routeName === '成瀬') {
+        return { main: '#8e24aa', dark: '#4a148c', light: '#e1bee7' };
+      }
+
+      return { main: '#1e88e5', dark: '#0d47a1', light: '#bbdefb' };
+    }
+
+    function findCurrentAndNextStop(bus, stops) {
+      if (!bus || !stops || stops.length === 0) return null;
+
+      const sortedStops = stops.slice().sort((a, b) => Number(a.stop_order) - Number(b.stop_order));
+
+      let nearestIndex = -1;
+      let minDistance = Infinity;
+
+      sortedStops.forEach((stop, index) => {
+        if (!isNaN(stop.lat) && !isNaN(stop.lng)) {
+          const distanceKm = calcDistanceKm(
+            Number(bus.lat),
+            Number(bus.lng),
+            Number(stop.lat),
+            Number(stop.lng)
+          );
+
+          if (distanceKm < minDistance) {
+            minDistance = distanceKm;
+            nearestIndex = index;
+          }
+        }
+      });
+
+      if (nearestIndex === -1) return null;
+
+      const currentStop = sortedStops[nearestIndex];
+      let nextIndex = nearestIndex + 1;
+
+      if (nextIndex >= sortedStops.length) {
+        nextIndex = 0;
+      }
+
+      const nextStop = sortedStops[nextIndex];
+      const nextDistanceKm = calcDistanceKm(
+        Number(bus.lat),
+        Number(bus.lng),
+        Number(nextStop.lat),
+        Number(nextStop.lng)
+      );
+
+      return {
+        currentStop,
+        nextStop,
+        etaMin: estimateMinutesByDistance(nextDistanceKm)
+      };
+    }
+
+    async function fetchJson(apiName, routeName = '', retry = 2) {
+  const url = routeName
+    ? `${API_BASE}?api=${encodeURIComponent(apiName)}&routeName=${encodeURIComponent(routeName)}`
+    : `${API_BASE}?api=${encodeURIComponent(apiName)}`;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('通信エラー');
+    return await res.json();
+  } catch (e) {
+    if (retry > 0) {
+      return await fetchJson(apiName, routeName, retry - 1);
+    }
+    throw e;
+  }
+}
+    async function fetchInitData(routeName, retry = 2) {
+  const url = `${API_BASE}?api=init&routeName=${encodeURIComponent(routeName)}`;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('通信エラー');
+    return await res.json();
+  } catch (e) {
+    if (retry > 0) {
+      return await fetchInitData(routeName, retry - 1);
+    }
+    throw e;
+  }
+} 
+    function initMap() {
+  if (mapInitialized) return;
+
+  map = L.map('map', {
+    zoomControl: false
+  }).setView([35.5535, 139.5795], 13);
+
+  // ＋−を右下へ移動
+  L.control.zoom({
+    position: 'bottomright'
+  }).addTo(map);
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+  }).addTo(map);
+
+  mapInitialized = true;
+}
+    function clearBaseLayers() {
+      baseLayers.forEach(layer => map.removeLayer(layer));
+      baseLayers = [];
+
+      stopLabelLayers.forEach(layer => {
+        if (map.hasLayer(layer)) map.removeLayer(layer);
+      });
+      stopLabelLayers = [];
+    }
+
+    function clearBusLayers() {
+      busLayers.forEach(layer => map.removeLayer(layer));
+      busLayers = [];
+    }
+
+    function addBaseLayer(layer) {
+      layer.addTo(map);
+      baseLayers.push(layer);
+    }
+
+    function addBusLayer(layer) {
+      layer.addTo(map);
+      busLayers.push(layer);
+    }
+
+    function addStopLabelLayer(layer) {
+      layer.addTo(map);
+      stopLabelLayers.push(layer);
+    }
+
+    function updateStopLabelVisibility() {
+      const zoom = map.getZoom();
+
+      stopLabelLayers.forEach(layer => {
+        if (zoom >= 15) {
+          if (!map.hasLayer(layer)) {
+            map.addLayer(layer);
+          }
+        } else {
+          if (map.hasLayer(layer)) {
+            map.removeLayer(layer);
+          }
+        }
+      });
+    }
+
+    function renderBusMarkers() {
+      clearBusLayers();
+
+      currentVisibleBuses.forEach(bus => {
+        if (bus.lat !== '' && bus.lng !== '') {
+          const busIcon = L.divIcon({
+            html: '<div>🚌</div>',
+            className: 'bus-icon',
+            iconSize: [70, 70],
+            iconAnchor: [35, 35]
+          });
+
+          const marker = L.marker([bus.lat, bus.lng], { icon: busIcon }).bindPopup(
+            '<b>' + (bus.route_name || '') + '</b><br>' +
+            '状態: ' + (bus.status || '')
+          );
+
+          addBusLayer(marker);
+        }
+      });
+    }
+
+    function clearUserLocation() {
+      if (userLocationLayer) {
+        map.removeLayer(userLocationLayer);
+        userLocationLayer = null;
+      }
+
+      if (userAccuracyLayer) {
+        map.removeLayer(userAccuracyLayer);
+        userAccuracyLayer = null;
+      }
+    }
+
+    function showUserLocation(forceCenter) {
+      if (!navigator.geolocation) {
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        function(position) {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const accuracy = position.coords.accuracy || 0;
+
+          clearUserLocation();
+
+          userAccuracyLayer = L.circle([lat, lng], {
+            radius: accuracy,
+            color: '#1976d2',
+            fillColor: '#64b5f6',
+            fillOpacity: 0.15,
+            weight: 1
+          }).addTo(map);
+
+          userLocationLayer = L.circleMarker([lat, lng], {
+            radius: 8,
+            color: '#1565c0',
+            fillColor: '#1e88e5',
+            fillOpacity: 1,
+            weight: 2
+          }).bindPopup('あなたの現在地').addTo(map);
+
+          if (forceCenter || !hasAutoCenteredUser) {
+            map.setView([lat, lng], 15);
+            hasAutoCenteredUser = true;
+          }
+        },
+        function(error) {
+          console.error(error);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 30000
+        }
+      );
+    }
+
+    
+
+
+// ----------------------------
+function drawRestrictedAndStops(routeName, restrictedPath, stops) {
+  if (restrictedPath && restrictedPath.length > 0) {
+    const restrictedLine = L.polyline(restrictedPath, {
+      color: '#444',
+      weight: 5,
+      opacity: 1,
+      dashArray: '10,10'
+    });
+
+    addBaseLayer(restrictedLine);
+  }
+
+  stopCache = stops || [];
+
+  if (stopCache.length > 0) {
+    stopCache.forEach(stop => {
+      if (!isNaN(stop.lat) && !isNaN(stop.lng)) {
+        let isNextStop = false;
+
+        if (currentVisibleBuses.length > 0) {
+          const nextInfo = findCurrentAndNextStop(currentVisibleBuses[0], stopCache);
+          if (nextInfo && nextInfo.nextStop.stop_name === stop.stop_name) {
+            isNextStop = true;
+          }
+        }
+
+        const routeColors = getRouteColor(currentRouteName);
+
+        const stopMarker = L.circleMarker([stop.lat, stop.lng], {
+          radius: isNextStop ? 16 : 10,
+          color: isNextStop ? '#e65100' : routeColors.dark,
+          fillColor: isNextStop ? '#ff9800' : routeColors.main,
+          fillOpacity: isNextStop ? 1 : 0.85,
+          weight: isNextStop ? 4 : 3
+        }).bindPopup(
+          '<b>' + (stop.stop_name || '') + '</b><br>' +
+          '順番: ' + (stop.stop_order || '') + '<br>' +
+          '備考: ' + (stop.note || '')
+        );
+
+        addBaseLayer(stopMarker);
+
+        const stopLabel = L.marker([stop.lat, stop.lng], {
+          icon: L.divIcon({
+            className: 'stop-label',
+            html: '<div>' + (stop.stop_name || '') + '</div>',
+            iconSize: [120, 20],
+            iconAnchor: [-8, 10]
+          })
+        });
+
+        addStopLabelLayer(stopLabel);
+      }
+    });
+  }
+
+  updateStopLabelVisibility();
+}
+function drawRouteLayers(routeName, pathData, restrictedPath, stops) {
+  if (pathData && pathData.length > 0) {
+    const routeColors = getRouteColor(routeName);
+
+    const routeLine = L.polyline(pathData, {
+      color: routeColors.main,
+      weight: 6,
+      opacity: 1
+    });
+
+    addBaseLayer(routeLine);
+
+    if (!map._routeFitted) {
+      map.fitBounds(pathData, { padding: [20, 20] });
+      map._routeFitted = true;
+    }
+  }
+
+  drawRestrictedAndStops(routeName, restrictedPath, stops);
+}
+    // ----------------------------
+async function loadRouteLayers(routeName) {
+  clearBaseLayers();
+  stopCache = [];
+
+  const requestId = ++currentRouteRequestId;
+
+  const cached = routeDataCache[routeName];
+  if (cached) {
+    if (requestId !== currentRouteRequestId) return;
+
+    drawRouteLayers(routeName, cached.pathData, cached.restrictedPath, cached.stops);
+    return;
+  }
+
+  try {
+    const data = await fetchInitData(routeName);
+
+    if (requestId !== currentRouteRequestId) return;
+
+    const pathData = data.pathData || [];
+    const restrictedPath = data.restrictedPath || [];
+    const stops = data.stops || [];
+
+    routeDataCache[routeName] = {
+      pathData: pathData,
+      restrictedPath: restrictedPath,
+      stops: stops
+    };
+
+    drawRouteLayers(routeName, pathData, restrictedPath, stops);
+
+  } catch (e) {
+    console.error(e);
+  }
+}
+    async function loadBusData() {
+      initMap();
+
+      currentRouteName = document.getElementById('routeSelector').value;
+      currentVisibleBuses = [];
+
+      try {
+        const data = await fetchJson('busLocations');
+
+        if (data && data.length > 0) {
+          data.forEach(bus => {
+            if (shouldHideBus(bus)) return;
+            if (String(bus.route_name) !== String(currentRouteName)) return;
+            currentVisibleBuses.push(bus);
+          });
+        }
+
+        renderBusMarkers();
+        updateStatusBox(data || []);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+async function changeRoute() {
+  if (isChangingRoute) return;
+  isChangingRoute = true;
+
+  try {
+    currentRouteName = document.getElementById('routeSelector').value;
+    currentVisibleBuses = [];
+    stopCache = [];
+
+    clearBusLayers();
+    clearBaseLayers();
+
+    map._routeFitted = false;
+
+    // ★ここ重要
+    await loadRouteLayers(currentRouteName);
+    await loadBusData();
+
+  } finally {
+    isChangingRoute = false;
+  }
+}    window.addEventListener('load', async function() {
+  initMap();
+  currentRouteName = document.getElementById('routeSelector').value;
+
+  await loadRouteLayers(currentRouteName);
+  await loadBusData();
+
+  document.getElementById('routeSelector').addEventListener('change', function() {
+    changeRoute();
+  });
+
+  map.on('zoomend', function() {
+    updateStopLabelVisibility();
+  });
+
+  setTimeout(function() {
+    showUserLocation(false);
+  }, 2500);
+      
+let isUpdating = false;
+
+setInterval(async function() {
+  if (isUpdating) return;
+
+  isUpdating = true;
+  try {
+    await loadBusData();
+  } catch (e) {
+    console.error(e);
+  } finally {
+    isUpdating = false;
+  }
+}, 15000);  
+});
+  </script>
+</body>
+</html>
