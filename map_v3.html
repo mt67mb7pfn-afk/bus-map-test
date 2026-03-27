@@ -309,6 +309,7 @@
   <script>
     const API_BASE = 'https://script.google.com/macros/s/AKfycbx3IdwRgyzBTt-_efBSiBNyMwExDcBTwQAHRuX13VS09fj86jiKBjtw2ITVQLcEheU/exec';
 
+    let isInitialLoading = true;
     let pendingRouteName = null;
     let map;
     let mapInitialized = false;
@@ -834,6 +835,10 @@ async function loadRouteLayers(routeName) {
   }
 }
 async function changeRoute() {
+
+  // ★追加（これが効く）
+  if (isInitialLoading) return;
+
   pendingRouteName = document.getElementById('routeSelector').value;
 
   if (isChangingRoute) return;
@@ -855,7 +860,6 @@ async function changeRoute() {
 
       await loadRouteLayers(routeToShow);
 
-      // ルート描画後に別ルート予約が入っていたら次へ
       if (pendingRouteName) {
         continue;
       }
@@ -865,12 +869,16 @@ async function changeRoute() {
   } finally {
     isChangingRoute = false;
   }
-}    window.addEventListener('load', async function() {
+}
+    window.addEventListener('load', async function() {
   initMap();
   currentRouteName = document.getElementById('routeSelector').value;
 
   await loadRouteLayers(currentRouteName);
   await loadBusData();
+
+  // ★ここで解除
+  isInitialLoading = false;
 
   document.getElementById('routeSelector').addEventListener('change', function() {
     changeRoute();
@@ -883,22 +891,22 @@ async function changeRoute() {
   setTimeout(function() {
     showUserLocation(false);
   }, 2500);
-      
-let isUpdating = false;
 
-setInterval(async function() {
-  if (isChangingRoute) return;
-  if (isUpdating) return;
+  let isUpdating = false;
 
-  isUpdating = true;
-  try {
-    await loadBusData();
-  } catch (e) {
-    console.error(e);
-  } finally {
-    isUpdating = false;
-  }
-}, 15000);
+  setInterval(async function() {
+    if (isChangingRoute) return;
+    if (isUpdating) return;
+
+    isUpdating = true;
+    try {
+      await loadBusData();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      isUpdating = false;
+    }
+  }, 15000);
 });
   </script>
 </body>
