@@ -135,16 +135,28 @@
     }
 
     .selector {
-      width: 100%;
-      padding: 8px 10px;
-      font-size: 15px;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: #fff;
-      color: var(--text);
-      outline: none;
-    }
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 15px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text);
+  outline: none;
+}
+    .selector.initial {
+  border: 2px solid #ff9800;
+  background: #fff8e1;
+  color: #e65100;
+  font-weight: 700;
+}
 
+.selector.active {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--text);
+  font-weight: normal;
+}
     .map-floating-location-btn {
       position: absolute;
       top: 12px;
@@ -285,13 +297,14 @@
     <div class="map-wrap">
       <div class="floating-ui route-box">
         <div class="route-label">送迎ルート</div>
-        <select id="routeSelector" class="selector">
-          <option value="鴨志田">鴨志田</option>
-          <option value="たまプラ">たまプラ</option>
-          <option value="ニュータウン">ニュータウン</option>
-          <option value="十日市場">十日市場</option>
-          <option value="成瀬">成瀬</option>
-        </select>
+        <select id="routeSelector" class="selector initial">
+  <option value="">▼ ルートを選択してください</option>
+  <option value="鴨志田">鴨志田</option>
+  <option value="たまプラ">たまプラ</option>
+  <option value="ニュータウン">ニュータウン</option>
+  <option value="十日市場">十日市場</option>
+  <option value="成瀬">成瀬</option>
+</select>
       </div>
 
       <button type="button" class="map-floating-location-btn" onclick="showUserLocation(true)">
@@ -835,16 +848,24 @@ async function loadRouteLayers(routeName) {
   }
 }
 async function changeRoute() {
-
   const selectedRoute = document.getElementById('routeSelector').value;
 
-  // ★初回ロード中は予約だけして終了
+  // 未選択なら何もしない
+  if (!selectedRoute) {
+    return;
+  }
+
+  // 初回選択後は見た目を通常に戻す
+  const selector = document.getElementById('routeSelector');
+  selector.classList.remove('initial');
+  selector.classList.add('active');
+
+  // 初回ロード中なら予約だけして終了
   if (isInitialLoading) {
     pendingRouteName = selectedRoute;
     return;
   }
 
-  // ★ここで初めて確定
   pendingRouteName = selectedRoute;
 
   if (isChangingRoute) return;
@@ -866,7 +887,6 @@ async function changeRoute() {
 
       await loadRouteLayers(routeToShow);
 
-      // ★途中で変更されたらやり直し
       if (pendingRouteName) {
         continue;
       }
@@ -876,14 +896,44 @@ async function changeRoute() {
   } finally {
     isChangingRoute = false;
   }
-}
-    window.addEventListener('load', async function() {
+}  
+  window.addEventListener('load', async function() {
   initMap();
-  currentRouteName = document.getElementById('routeSelector').value;
 
-  await loadRouteLayers(currentRouteName);
-  await loadBusData();
+  isInitialLoading = false;
 
+  if (pendingRouteName) {
+    changeRoute();
+  }
+
+  document.getElementById('routeSelector').addEventListener('change', function() {
+    changeRoute();
+  });
+
+  map.on('zoomend', function() {
+    updateStopLabelVisibility();
+  });
+
+  setTimeout(function() {
+    showUserLocation(false);
+  }, 2500);
+
+  let isUpdating = false;
+
+  setInterval(async function() {
+    if (isChangingRoute) return;
+    if (isUpdating) return;
+
+    isUpdating = true;
+    try {
+      await loadBusData();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      isUpdating = false;
+    }
+  }, 15000);
+});
   // ★ここに入れる
   isInitialLoading = false;
 
