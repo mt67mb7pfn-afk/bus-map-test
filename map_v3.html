@@ -836,10 +836,16 @@ async function loadRouteLayers(routeName) {
 }
 async function changeRoute() {
 
-  // ★追加（これが効く）
-  if (isInitialLoading) return;
+  const selectedRoute = document.getElementById('routeSelector').value;
 
-  pendingRouteName = document.getElementById('routeSelector').value;
+  // ★初回ロード中は予約だけして終了
+  if (isInitialLoading) {
+    pendingRouteName = selectedRoute;
+    return;
+  }
+
+  // ★ここで初めて確定
+  pendingRouteName = selectedRoute;
 
   if (isChangingRoute) return;
   isChangingRoute = true;
@@ -860,6 +866,7 @@ async function changeRoute() {
 
       await loadRouteLayers(routeToShow);
 
+      // ★途中で変更されたらやり直し
       if (pendingRouteName) {
         continue;
       }
@@ -877,8 +884,12 @@ async function changeRoute() {
   await loadRouteLayers(currentRouteName);
   await loadBusData();
 
-  // ★ここで解除
+  // ★ここに入れる
   isInitialLoading = false;
+
+  if (pendingRouteName) {
+    changeRoute();
+  }
 
   document.getElementById('routeSelector').addEventListener('change', function() {
     changeRoute();
@@ -907,7 +918,6 @@ async function changeRoute() {
       isUpdating = false;
     }
   }, 15000);
-});
-  </script>
+});  </script>
 </body>
 </html>
