@@ -833,9 +833,8 @@ async function loadRouteLayers(routeName) {
     console.error(e);
   }
 }
-    async function changeRoute() {
-  const selectedRoute = document.getElementById('routeSelector').value;
-  pendingRouteName = selectedRoute;
+async function changeRoute() {
+  pendingRouteName = document.getElementById('routeSelector').value;
 
   if (isChangingRoute) return;
   isChangingRoute = true;
@@ -856,10 +855,12 @@ async function loadRouteLayers(routeName) {
 
       await loadRouteLayers(routeToShow);
 
-      // 途中で別ルートが選ばれていなければ、そのルートのバスを読む
-      if (!pendingRouteName) {
-        await loadBusData();
+      // ルート描画後に別ルート予約が入っていたら次へ
+      if (pendingRouteName) {
+        continue;
       }
+
+      await loadBusData();
     }
   } finally {
     isChangingRoute = false;
