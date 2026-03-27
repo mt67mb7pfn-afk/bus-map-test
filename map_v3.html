@@ -934,40 +934,6 @@ async function changeRoute() {
     }
   }, 15000);
 });
-  // ★ここに入れる
-  isInitialLoading = false;
-
-  if (pendingRouteName) {
-    changeRoute();
-  }
-
-  document.getElementById('routeSelector').addEventListener('change', function() {
-    changeRoute();
-  });
-
-  map.on('zoomend', function() {
-    updateStopLabelVisibility();
-  });
-
-  setTimeout(function() {
-    showUserLocation(false);
-  }, 2500);
-
-  let isUpdating = false;
-
-  setInterval(async function() {
-    if (isChangingRoute) return;
-    if (isUpdating) return;
-
-    isUpdating = true;
-    try {
-      await loadBusData();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      isUpdating = false;
-    }
-  }, 15000);
-});  </script>
+    </script>
 </body>
 </html>
