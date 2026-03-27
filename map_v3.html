@@ -295,7 +295,9 @@
 
   <div class="map-page">
     <div class="map-wrap">
-      <div class="floating-ui route-box">
+      <div id="loading" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:3000; background:rgba(255,255,255,0.9); padding:10px 16px; border-radius:10px; font-weight:700;">
+  読み込み中…
+</div>      <div class="floating-ui route-box">
         <div class="route-label">送迎ルート</div>
         <select id="routeSelector" class="selector initial">
   <option value="">▼ ルートを選択してください</option>
@@ -322,7 +324,6 @@
   <script>
     const API_BASE = 'https://script.google.com/macros/s/AKfycbx3IdwRgyzBTt-_efBSiBNyMwExDcBTwQAHRuX13VS09fj86jiKBjtw2ITVQLcEheU/exec';
 
-    let isInitialLoading = true;
     let pendingRouteName = null;
     let map;
     let mapInitialized = false;
@@ -755,7 +756,14 @@ function drawRestrictedAndStops(routeName, restrictedPath, stops) {
 
   updateStopLabelVisibility();
 }
-function drawRouteLayers(routeName, pathData, restrictedPath, stops) {
+    function showLoading() {
+  document.getElementById('loading').style.display = 'block';
+}
+
+function hideLoading() {
+  document.getElementById('loading').style.display = 'none';
+}
+    function drawRouteLayers(routeName, pathData, restrictedPath, stops) {
   if (pathData && pathData.length > 0) {
     const routeColors = getRouteColor(routeName);
 
@@ -850,26 +858,18 @@ async function loadRouteLayers(routeName) {
 async function changeRoute() {
   const selectedRoute = document.getElementById('routeSelector').value;
 
-  // 未選択なら何もしない
-  if (!selectedRoute) {
-    return;
-  }
+  if (!selectedRoute) return;
 
-  // 初回選択後は見た目を通常に戻す
   const selector = document.getElementById('routeSelector');
   selector.classList.remove('initial');
   selector.classList.add('active');
-
-  // 初回ロード中なら予約だけして終了
-  if (isInitialLoading) {
-    pendingRouteName = selectedRoute;
-    return;
-  }
 
   pendingRouteName = selectedRoute;
 
   if (isChangingRoute) return;
   isChangingRoute = true;
+
+  showLoading(); // ★追加
 
   try {
     while (pendingRouteName) {
@@ -887,24 +887,17 @@ async function changeRoute() {
 
       await loadRouteLayers(routeToShow);
 
-      if (pendingRouteName) {
-        continue;
-      }
+      if (pendingRouteName) continue;
 
       await loadBusData();
     }
   } finally {
+    hideLoading(); // ★追加
     isChangingRoute = false;
   }
-}  
-  window.addEventListener('load', async function() {
+}  window.addEventListener('load', async function() {
   initMap();
 
-  isInitialLoading = false;
-
-  if (pendingRouteName) {
-    changeRoute();
-  }
 
   document.getElementById('routeSelector').addEventListener('change', function() {
     changeRoute();
@@ -921,19 +914,20 @@ async function changeRoute() {
   let isUpdating = false;
 
   setInterval(async function() {
-    if (isChangingRoute) return;
-    if (isUpdating) return;
+  if (isChangingRoute) return;
+  if (isUpdating) return;
+  if (!currentRouteName) return;
 
-    isUpdating = true;
-    try {
-      await loadBusData();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      isUpdating = false;
-    }
-  }, 15000);
-});
-    </script>
+  isUpdating = true;
+  try {
+    await loadBusData();
+  } catch (e) {
+    console.error(e);
+  } finally {
+    isUpdating = false;
+  }
+}, 15000);
+  });
+  </script>
 </body>
 </html>
