@@ -309,6 +309,7 @@
   <script>
     const API_BASE = 'https://script.google.com/macros/s/AKfycbx3IdwRgyzBTt-_efBSiBNyMwExDcBTwQAHRuX13VS09fj86jiKBjtw2ITVQLcEheU/exec';
 
+    let pendingRouteName = null;
     let map;
     let mapInitialized = false;
 let currentRouteRequestId = 0;
@@ -829,36 +830,37 @@ async function loadRouteLayers(routeName) {
   }
 }
     async function changeRoute() {
+  const selectedRoute = document.getElementById('routeSelector').value;
+  pendingRouteName = selectedRoute;
+
   if (isChangingRoute) return;
   isChangingRoute = true;
 
   try {
-    const selectedRoute = document.getElementById('routeSelector').value;
+    while (pendingRouteName) {
+      const routeToShow = pendingRouteName;
+      pendingRouteName = null;
 
-    // ★ここ追加（超重要）
-    const requestId = ++currentRouteRequestId;
+      currentRouteName = routeToShow;
+      currentVisibleBuses = [];
+      stopCache = [];
 
-    currentRouteName = selectedRoute;
-    currentVisibleBuses = [];
-    stopCache = [];
+      clearBusLayers();
+      clearBaseLayers();
 
-    clearBusLayers();
-    clearBaseLayers();
+      map._routeFitted = false;
 
-    map._routeFitted = false;
+      await loadRouteLayers(routeToShow);
 
-    await loadRouteLayers(selectedRoute);
-
-    // ★ここ追加（ズレ防止）
-    if (requestId !== currentRouteRequestId) return;
-
-    await loadBusData();
-
+      // 途中で別ルートが選ばれていなければ、そのルートのバスを読む
+      if (!pendingRouteName) {
+        await loadBusData();
+      }
+    }
   } finally {
     isChangingRoute = false;
   }
-}
-    window.addEventListener('load', async function() {
+}    window.addEventListener('load', async function() {
   initMap();
   currentRouteName = document.getElementById('routeSelector').value;
 
