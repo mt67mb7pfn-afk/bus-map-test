@@ -298,26 +298,26 @@
       <div id="loading" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:3000; background:rgba(255,255,255,0.9); padding:10px 16px; border-radius:10px; font-weight:700;">
   読み込み中…
 </div>
-<!-- ★ここだけ追加（loadingの直下） -->
 <div id="guide" style="
   position:absolute;
   inset:0;
   z-index:2500;
-  background:rgba(0,0,0,0.35);
+  background:transparent;
   display:flex;
   align-items:center;
   justify-content:center;
   pointer-events:none;
-  ">
+">
   <div style="
     background:#fff;
     padding:18px 16px;
-    border-radius:12px;
+    border-radius:16px;
     width:80%;
     max-width:320px;
     text-align:center;
     font-weight:700;
-  ">
+    box-shadow:0 4px 12px rgba(0,0,0,0.18);
+    ">
     ルートを選択してください
     <div style="margin-top:10px; font-size:12px; font-weight:normal;">
       上の「送迎ルート」から選べます
