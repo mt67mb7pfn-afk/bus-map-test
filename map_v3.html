@@ -797,35 +797,48 @@ async function loadRouteLayers(routeName) {
   }
 }
     async function loadBusData() {
-      initMap();
+  initMap();
 
-      currentRouteName = document.getElementById('routeSelector').value;
-      currentVisibleBuses = [];
+  const selectedRoute = document.getElementById('routeSelector').value;
 
-      try {
-        const data = await fetchJson('busLocations');
+  try {
+    const data = await fetchJson('busLocations');
 
-        if (data && data.length > 0) {
-          data.forEach(bus => {
-            if (shouldHideBus(bus)) return;
-            if (String(bus.route_name) !== String(currentRouteName)) return;
-            currentVisibleBuses.push(bus);
-          });
-        }
-
-        renderBusMarkers();
-        updateStatusBox(data || []);
-        updateLastUpdateTime(data || []);
-      } catch (e) {
-        console.error(e);
-      }
+    // 取得中に選択ルートが変わっていたら、この結果は捨てる
+    if (selectedRoute !== document.getElementById('routeSelector').value) {
+      return;
     }
-async function changeRoute() {
+
+    currentRouteName = selectedRoute;
+    currentVisibleBuses = [];
+
+    if (data && data.length > 0) {
+      data.forEach(bus => {
+        if (shouldHideBus(bus)) return;
+        if (String(bus.route_name) !== String(currentRouteName)) return;
+        currentVisibleBuses.push(bus);
+      });
+    }
+
+    renderBusMarkers();
+    updateStatusBox(data || []);
+    updateLastUpdateTime(data || []);
+
+  } catch (e) {
+    console.error(e);
+  }
+}
+    async function changeRoute() {
   if (isChangingRoute) return;
   isChangingRoute = true;
 
   try {
-    currentRouteName = document.getElementById('routeSelector').value;
+    const selectedRoute = document.getElementById('routeSelector').value;
+
+    // ★ここ追加（超重要）
+    const requestId = ++currentRouteRequestId;
+
+    currentRouteName = selectedRoute;
     currentVisibleBuses = [];
     stopCache = [];
 
@@ -834,14 +847,18 @@ async function changeRoute() {
 
     map._routeFitted = false;
 
-    // ★ここ重要
-    await loadRouteLayers(currentRouteName);
+    await loadRouteLayers(selectedRoute);
+
+    // ★ここ追加（ズレ防止）
+    if (requestId !== currentRouteRequestId) return;
+
     await loadBusData();
 
   } finally {
     isChangingRoute = false;
   }
-}    window.addEventListener('load', async function() {
+}
+    window.addEventListener('load', async function() {
   initMap();
   currentRouteName = document.getElementById('routeSelector').value;
 
@@ -863,6 +880,7 @@ async function changeRoute() {
 let isUpdating = false;
 
 setInterval(async function() {
+  if (isChangingRoute) return;
   if (isUpdating) return;
 
   isUpdating = true;
@@ -873,7 +891,7 @@ setInterval(async function() {
   } finally {
     isUpdating = false;
   }
-}, 15000);  
+}, 15000);
 });
   </script>
 </body>
