@@ -805,18 +805,22 @@ async function loadRouteLayers(routeName) {
   try {
     const data = await fetchJson('busLocations');
 
-    // 取得中に選択ルートが変わっていたら、この結果は捨てる
+    // ★① 既存（OK）
     if (selectedRoute !== document.getElementById('routeSelector').value) {
       return;
     }
 
-    currentRouteName = selectedRoute;
+    // ★② これ追加（超重要）
+    if (selectedRoute !== currentRouteName) {
+      return;
+    }
+
     currentVisibleBuses = [];
 
     if (data && data.length > 0) {
       data.forEach(bus => {
         if (shouldHideBus(bus)) return;
-        if (String(bus.route_name) !== String(currentRouteName)) return;
+        if (String(bus.route_name) !== String(selectedRoute)) return;
         currentVisibleBuses.push(bus);
       });
     }
