@@ -126,6 +126,12 @@
   border: 1px solid #ef9a9a;
   color: #c62828;
 }
+
+.status-box.gps-lost {
+  background: rgba(224,224,224,0.85);
+  border: 1px solid #9e9e9e;
+  color: #424242;
+}
     .route-label {
       font-size: 11px;
       font-weight: 700;
@@ -359,6 +365,12 @@ let currentRouteRequestId = 0;
       return Math.max(1, Math.round((km / avgSpeedKmH) * 60));
     }
 
+    function getMinutesSinceUpdate(bus) {
+  if (!bus.updated_at) return Infinity;
+  const updated = new Date(bus.updated_at.replace(/-/g, '/'));
+  return (Date.now() - updated) / 60000;
+}
+
     function shouldHideBus(bus) {
   const note = (bus.note || '').trim();
   const status = (bus.status || '').trim();
@@ -368,6 +380,7 @@ let currentRouteRequestId = 0;
   if (status.indexOf('回送') !== -1) return true;
   if (status.indexOf('運休') !== -1) return true;
   if (!bus.updated_at) return true;
+  if (getMinutesSinceUpdate(bus) > 15) return true;
 
   return false;
 }
@@ -385,6 +398,7 @@ let currentRouteRequestId = 0;
   }
 
   const status = (target.status || '').trim();
+  const minutesAgo = getMinutesSinceUpdate(target);
 
   if (status === '運休') {
     box.className = 'floating-ui status-box suspend';
@@ -396,6 +410,13 @@ let currentRouteRequestId = 0;
   if (status === '回送') {
     box.className = 'floating-ui status-box stop';
     box.innerHTML = currentRouteName + 'ルートは現在回送中です';
+    box.style.display = 'block';
+    return;
+  }
+
+  if (minutesAgo > 15) {
+    box.className = 'floating-ui status-box gps-lost';
+    box.innerHTML = '位置情報を取得できていません';
     box.style.display = 'block';
     return;
   }
@@ -417,7 +438,7 @@ let currentRouteRequestId = 0;
   box.style.display = 'none';
   box.className = 'floating-ui status-box';
   box.innerHTML = '';
-} 
+}
     function updateLastUpdateTime(allBuses) {
   const box = document.getElementById('lastUpdateBox');
   if (!box) return;
@@ -427,26 +448,39 @@ let currentRouteRequestId = 0;
     return;
   }
 
+  // 現在のルートのバスを優先、なければ最新のものを使用
+  const routeBus = (allBuses || []).find(bus => String(bus.route_name) === String(currentRouteName) && bus.updated_at);
   let latest = null;
 
-  allBuses.forEach(bus => {
-    if (!bus.updated_at) return;
-
-    const date = new Date(bus.updated_at.replace(/-/g, '/'));
-    if (!latest || date > latest) {
-      latest = date;
-    }
-  });
+  if (routeBus) {
+    latest = new Date(routeBus.updated_at.replace(/-/g, '/'));
+  } else {
+    allBuses.forEach(bus => {
+      if (!bus.updated_at) return;
+      const date = new Date(bus.updated_at.replace(/-/g, '/'));
+      if (!latest || date > latest) latest = date;
+    });
+  }
 
   if (!latest) {
     box.style.display = 'none';
     return;
   }
 
+  const minutesAgo = (Date.now() - latest) / 60000;
   const hh = String(latest.getHours()).padStart(2, '0');
   const mm = String(latest.getMinutes()).padStart(2, '0');
 
-  box.innerHTML = `最終更新：${hh}:${mm}`;
+  if (minutesAgo > 15) {
+    box.innerHTML = `最終更新：${hh}:${mm}（${Math.floor(minutesAgo)}分前）`;
+    box.style.color = '#c62828';
+  } else if (minutesAgo > 5) {
+    box.innerHTML = `最終更新：${hh}:${mm}（${Math.floor(minutesAgo)}分前）`;
+    box.style.color = '#e65100';
+  } else {
+    box.innerHTML = `最終更新：${hh}:${mm}`;
+    box.style.color = '';
+  }
   box.style.display = 'block';
 }
     function getRouteColor(routeName) {
@@ -620,8 +654,12 @@ let currentRouteRequestId = 0;
 
       currentVisibleBuses.forEach(bus => {
         if (bus.lat !== '' && bus.lng !== '') {
+          const minutesAgo = getMinutesSinceUpdate(bus);
+          const isStale = minutesAgo >= 5;
+          const opacity = isStale ? 0.4 : 1;
+
           const busIcon = L.divIcon({
-            html: '<div>🚌</div>',
+            html: `<div style="opacity:${opacity}">🚌</div>`,
             className: 'bus-icon',
             iconSize: [70, 70],
             iconAnchor: [35, 35]
@@ -629,7 +667,8 @@ let currentRouteRequestId = 0;
 
           const marker = L.marker([bus.lat, bus.lng], { icon: busIcon }).bindPopup(
             '<b>' + (bus.route_name || '') + '</b><br>' +
-            '状態: ' + (bus.status || '')
+            '状態: ' + (bus.status || '') +
+            (isStale ? '<br>⚠️ ' + Math.floor(minutesAgo) + '分前の情報です' : '')
           );
 
           addBusLayer(marker);
