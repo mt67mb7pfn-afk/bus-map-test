@@ -597,8 +597,8 @@ let currentRouteRequestId = 0;
     position: 'bottomright'
   }).addTo(map);
 
-  L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png?api_key=eyJhbGciOiJIUzI1NiJ9.eyJhIjoiYWNfMG81bHM4NmsiLCJqdGkiOiJlNDBjNTZlNSJ9.Sa9EbKaPklT6OITm0T4UwW2tfSCLfGsibylq0waKelU', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
   }).addTo(map);
 
   mapInitialized = true;
