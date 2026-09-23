@@ -829,8 +829,9 @@ async function loadRouteLayers(routeName) {
 
   const requestId = ++currentRouteRequestId;
 
+  const isBus04Era = new Date() >= new Date('2026-10-01');
   const BUS04_PAIRED = { '十日市場': '成瀬', '成瀬': '十日市場' };
-  const pairedRoute = BUS04_PAIRED[routeName] || null;
+  const pairedRoute = (isBus04Era && BUS04_PAIRED[routeName]) || null;
 
   async function loadSingleRoute(name) {
     const cached = routeDataCache[name];
@@ -881,7 +882,8 @@ async function loadRouteLayers(routeName) {
       data.forEach(bus => {
         if (shouldHideBus(bus)) return;
         const BUS04_ROUTES = ['十日市場', '成瀬'];
-        const isBus04Combined = bus.bus_id === 'BUS04'
+        const isBus04Era = new Date() >= new Date('2026-10-01');
+        const isBus04Combined = isBus04Era && bus.bus_id === 'BUS04'
           && BUS04_ROUTES.includes(String(bus.route_name))
           && BUS04_ROUTES.includes(String(selectedRoute));
         if (!isBus04Combined && String(bus.route_name) !== String(selectedRoute)) return;
