@@ -829,33 +829,32 @@ async function loadRouteLayers(routeName) {
 
   const requestId = ++currentRouteRequestId;
 
-  const cached = routeDataCache[routeName];
-  if (cached) {
-    if (requestId !== currentRouteRequestId) return;
+  const BUS04_PAIRED = { '十日市場': '成瀬', '成瀬': '十日市場' };
+  const pairedRoute = BUS04_PAIRED[routeName] || null;
 
-    drawRouteLayers(routeName, cached.pathData, cached.restrictedPath, cached.stops);
-    return;
+  async function loadSingleRoute(name) {
+    const cached = routeDataCache[name];
+    if (cached) {
+      if (requestId !== currentRouteRequestId) return;
+      drawRouteLayers(name, cached.pathData, cached.restrictedPath, cached.stops);
+      return;
+    }
+    try {
+      const data = await fetchInitData(name);
+      if (requestId !== currentRouteRequestId) return;
+      const pathData = data.pathData || [];
+      const restrictedPath = data.restrictedPath || [];
+      const stops = data.stops || [];
+      routeDataCache[name] = { pathData, restrictedPath, stops };
+      drawRouteLayers(name, pathData, restrictedPath, stops);
+    } catch (e) {
+      console.error(e);
+    }
   }
 
-  try {
-    const data = await fetchInitData(routeName);
-
-    if (requestId !== currentRouteRequestId) return;
-
-    const pathData = data.pathData || [];
-    const restrictedPath = data.restrictedPath || [];
-    const stops = data.stops || [];
-
-    routeDataCache[routeName] = {
-      pathData: pathData,
-      restrictedPath: restrictedPath,
-      stops: stops
-    };
-
-    drawRouteLayers(routeName, pathData, restrictedPath, stops);
-
-  } catch (e) {
-    console.error(e);
+  await loadSingleRoute(routeName);
+  if (pairedRoute) {
+    await loadSingleRoute(pairedRoute);
   }
 }
     async function loadBusData() {
@@ -881,7 +880,11 @@ async function loadRouteLayers(routeName) {
     if (data && data.length > 0) {
       data.forEach(bus => {
         if (shouldHideBus(bus)) return;
-        if (String(bus.route_name) !== String(selectedRoute)) return;
+        const BUS04_ROUTES = ['十日市場', '成瀬'];
+        const isBus04Combined = bus.bus_id === 'BUS04'
+          && BUS04_ROUTES.includes(String(bus.route_name))
+          && BUS04_ROUTES.includes(String(selectedRoute));
+        if (!isBus04Combined && String(bus.route_name) !== String(selectedRoute)) return;
         currentVisibleBuses.push(bus);
       });
     }
