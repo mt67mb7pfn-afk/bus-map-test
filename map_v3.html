@@ -388,7 +388,10 @@ let currentRouteRequestId = 0;
   const box = document.getElementById('statusBox');
   if (!box) return;
 
-  const target = (allBuses || []).find(bus => String(bus.route_name) === String(currentRouteName));
+  const BUS04_ROUTES = ['十日市場', '成瀬'];
+  const target = currentRouteName === '十日市場・成瀬'
+    ? (allBuses || []).find(bus => BUS04_ROUTES.includes(String(bus.route_name)))
+    : (allBuses || []).find(bus => String(bus.route_name) === String(currentRouteName));
 
   if (!target) {
     box.style.display = 'none';
@@ -449,7 +452,10 @@ let currentRouteRequestId = 0;
   }
 
   // 現在のルートのバスを優先、なければ最新のものを使用
-  const routeBus = (allBuses || []).find(bus => String(bus.route_name) === String(currentRouteName) && bus.updated_at);
+  const BUS04_ROUTES_LU = ['十日市場', '成瀬'];
+  const routeBus = currentRouteName === '十日市場・成瀬'
+    ? (allBuses || []).find(bus => BUS04_ROUTES_LU.includes(String(bus.route_name)) && bus.updated_at)
+    : (allBuses || []).find(bus => String(bus.route_name) === String(currentRouteName) && bus.updated_at);
   let latest = null;
 
   if (routeBus) {
@@ -483,7 +489,29 @@ let currentRouteRequestId = 0;
   }
   box.style.display = 'block';
 }
+    function getActiveRouteNow() {
+  if (new Date() < new Date('2026-10-01')) return null;
+  const t = new Date().getHours() * 60 + new Date().getMinutes();
+  const schedule = [
+    { start:  8*60,    end:  8*60+45, route: '十日市場' },
+    { start:  9*60,    end:  9*60+45, route: '成瀬' },
+    { start: 10*60,    end: 10*60+45, route: '十日市場' },
+    { start: 11*60,    end: 11*60+45, route: '成瀬' },
+    { start: 12*60+50, end: 13*60+35, route: '十日市場' },
+    { start: 13*60+50, end: 14*60+35, route: '成瀬' },
+    { start: 14*60+50, end: 15*60+35, route: '十日市場' },
+    { start: 15*60+50, end: 16*60+35, route: '成瀬' },
+    { start: 16*60+50, end: 17*60+35, route: '十日市場' },
+  ];
+  for (const s of schedule) {
+    if (t >= s.start && t <= s.end) return s.route;
+  }
+  return null;
+}
     function getRouteColor(routeName) {
+  if (routeName === '十日市場・成瀬') {
+    return getRouteColor(getActiveRouteNow() || '十日市場');
+  }
       if (routeName === '鴨志田') {
         return { main: '#e53935', dark: '#b71c1c', light: '#ffcdd2' };
       }
@@ -802,14 +830,14 @@ function drawRestrictedAndStops(routeName, restrictedPath, stops) {
 function hideLoading() {
   document.getElementById('loading').style.display = 'none';
 }
-    function drawRouteLayers(routeName, pathData, restrictedPath, stops) {
+    function drawRouteLayers(routeName, pathData, restrictedPath, stops, dimmed) {
   if (pathData && pathData.length > 0) {
     const routeColors = getRouteColor(routeName);
 
     const routeLine = L.polyline(pathData, {
       color: routeColors.main,
-      weight: 6,
-      opacity: 1
+      weight: dimmed ? 4 : 6,
+      opacity: dimmed ? 0.3 : 1
     });
 
     addBaseLayer(routeLine);
@@ -820,7 +848,9 @@ function hideLoading() {
     }
   }
 
-  drawRestrictedAndStops(routeName, restrictedPath, stops);
+  if (!dimmed) {
+    drawRestrictedAndStops(routeName, restrictedPath, stops);
+  }
 }
     // ----------------------------
 async function loadRouteLayers(routeName) {
@@ -829,15 +859,15 @@ async function loadRouteLayers(routeName) {
 
   const requestId = ++currentRouteRequestId;
 
-  const isBus04Era = new Date() >= new Date('2026-10-01');
-  const BUS04_PAIRED = { '十日市場': '成瀬', '成瀬': '十日市場' };
-  const pairedRoute = (isBus04Era && BUS04_PAIRED[routeName]) || null;
+  const isCombined = routeName === '十日市場・成瀬';
+  const activeRoute = isCombined ? (getActiveRouteNow() || '十日市場') : routeName;
+  const inactiveRoute = isCombined ? (activeRoute === '十日市場' ? '成瀬' : '十日市場') : null;
 
-  async function loadSingleRoute(name) {
+  async function loadSingleRoute(name, dimmed) {
     const cached = routeDataCache[name];
     if (cached) {
       if (requestId !== currentRouteRequestId) return;
-      drawRouteLayers(name, cached.pathData, cached.restrictedPath, cached.stops);
+      drawRouteLayers(name, cached.pathData, cached.restrictedPath, cached.stops, dimmed);
       return;
     }
     try {
@@ -847,15 +877,15 @@ async function loadRouteLayers(routeName) {
       const restrictedPath = data.restrictedPath || [];
       const stops = data.stops || [];
       routeDataCache[name] = { pathData, restrictedPath, stops };
-      drawRouteLayers(name, pathData, restrictedPath, stops);
+      drawRouteLayers(name, pathData, restrictedPath, stops, dimmed);
     } catch (e) {
       console.error(e);
     }
   }
 
-  await loadSingleRoute(routeName);
-  if (pairedRoute) {
-    await loadSingleRoute(pairedRoute);
+  await loadSingleRoute(activeRoute, false);
+  if (inactiveRoute) {
+    await loadSingleRoute(inactiveRoute, true);
   }
 }
     async function loadBusData() {
@@ -882,11 +912,9 @@ async function loadRouteLayers(routeName) {
       data.forEach(bus => {
         if (shouldHideBus(bus)) return;
         const BUS04_ROUTES = ['十日市場', '成瀬'];
-        const isBus04Era = new Date() >= new Date('2026-10-01');
-        const isBus04Combined = isBus04Era && bus.bus_id === 'BUS04'
-          && BUS04_ROUTES.includes(String(bus.route_name))
-          && BUS04_ROUTES.includes(String(selectedRoute));
-        if (!isBus04Combined && String(bus.route_name) !== String(selectedRoute)) return;
+        const isCombinedRoute = selectedRoute === '十日市場・成瀬'
+          && BUS04_ROUTES.includes(String(bus.route_name));
+        if (!isCombinedRoute && String(bus.route_name) !== String(selectedRoute)) return;
         currentVisibleBuses.push(bus);
       });
     }
@@ -942,6 +970,18 @@ async function changeRoute() {
 }  window.addEventListener('load', async function() {
   initMap();
 
+
+  if (new Date() >= new Date('2026-10-01')) {
+    const sel = document.getElementById('routeSelector');
+    ['十日市場', '成瀬'].forEach(v => {
+      const opt = Array.from(sel.options).find(o => o.value === v);
+      if (opt) opt.remove();
+    });
+    const combined = document.createElement('option');
+    combined.value = '十日市場・成瀬';
+    combined.textContent = '十日市場・成瀬';
+    sel.appendChild(combined);
+  }
 
   document.getElementById('routeSelector').addEventListener('change', function() {
     changeRoute();
